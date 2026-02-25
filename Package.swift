@@ -15,6 +15,10 @@ let package = Package(
             name: "fitmac",
             targets: ["FitMacCLI"]
         ),
+        .executable(
+            name: "FitMacApp",
+            targets: ["FitMacApp"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
@@ -32,6 +36,12 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
             path: "Sources/FitMacCLI"
+        ),
+        .executableTarget(
+            name: "FitMacApp",
+            dependencies: ["FitMacCore"],
+            path: "Sources/FitMacApp",
+            resources: [.process("Resources/Assets.xcassets")]
         ),
         .testTarget(
             name: "FitMacCoreTests",
