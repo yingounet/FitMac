@@ -4,8 +4,10 @@ import FitMacCore
 enum SidebarItem: String, CaseIterable, Identifiable {
     case home = "Home"
     case cache = "Cache"
+    case systemJunk = "System Junk"
     case trash = "Trash"
     case language = "Language"
+    case iTunes = "iTunes"
     case largeFiles = "Large Files"
     case uninstall = "Uninstall"
     case history = "History"
@@ -17,8 +19,10 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         switch self {
         case .home: return "externaldrive.fill"
         case .cache: return "trash.circle.fill"
+        case .systemJunk: return "gearshape.fill"
         case .trash: return "trash"
         case .language: return "globe"
+        case .iTunes: return "music.note"
         case .largeFiles: return "doc.fill"
         case .uninstall: return "xmark.bin.fill"
         case .history: return "clock.arrow.circlepath"
@@ -46,10 +50,14 @@ struct ContentView: View {
                 HomeView(selectedSidebarItem: $selectedSidebarItem)
             case .cache:
                 CacheView()
+            case .systemJunk:
+                SystemJunkView()
             case .trash:
                 TrashView()
             case .language:
                 LanguageFilesView()
+            case .iTunes:
+                iTunesView()
             case .largeFiles:
                 LargeFilesView()
             case .uninstall:
