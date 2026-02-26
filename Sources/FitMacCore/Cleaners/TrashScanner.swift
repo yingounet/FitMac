@@ -155,27 +155,55 @@ public actor TrashScanner {
 public actor TrashCleaner {
     public init() {}
     
-    public func empty(bin: TrashBin, dryRun: Bool = true) async throws -> Bool {
+    public func empty(bin: TrashBin, dryRun: Bool = true) async -> TrashEmptyResult {
         if dryRun {
-            return true
+            return TrashEmptyResult(emptiedBins: [bin], failedBins: [], freedSpace: bin.size)
         }
         
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: bin.path.path) else {
-            return true
+            return TrashEmptyResult(emptiedBins: [bin], failedBins: [], freedSpace: 0)
         }
         
-        let contents = try fileManager.contentsOfDirectory(at: bin.path, includingPropertiesForKeys: nil)
+        var emptiedBins: [TrashBin] = []
+        var failedBins: [FailedTrashBin] = []
+        var freedSpace: Int64 = 0
+        var hasFailures = false
+        
+        let contents: [URL]
+        do {
+            contents = try fileManager.contentsOfDirectory(at: bin.path, includingPropertiesForKeys: nil)
+        } catch {
+            return TrashEmptyResult(emptiedBins: [], failedBins: [FailedTrashBin(bin: bin, error: error.localizedDescription)], freedSpace: 0)
+        }
         
         for itemURL in contents {
             do {
+                let itemSize: Int64
+                if let resourceValues = try? itemURL.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey]) {
+                    if resourceValues.isDirectory == true {
+                        itemSize = (try? FileUtils.sizeOfItem(at: itemURL)) ?? 0
+                    } else {
+                        itemSize = Int64(resourceValues.fileSize ?? 0)
+                    }
+                } else {
+                    itemSize = 0
+                }
+                
                 try fileManager.removeItem(at: itemURL)
+                freedSpace += itemSize
             } catch {
-                throw error
+                hasFailures = true
             }
         }
         
-        return true
+        if hasFailures && freedSpace == 0 {
+            failedBins.append(FailedTrashBin(bin: bin, error: "Failed to empty some items"))
+        } else {
+            emptiedBins.append(bin)
+        }
+        
+        return TrashEmptyResult(emptiedBins: emptiedBins, failedBins: failedBins, freedSpace: freedSpace)
     }
     
     public func emptyAll(bins: [TrashBin], dryRun: Bool = true) async -> TrashEmptyResult {
@@ -184,14 +212,10 @@ public actor TrashCleaner {
         var freedSpace: Int64 = 0
         
         for bin in bins {
-            do {
-                if try await empty(bin: bin, dryRun: dryRun) {
-                    emptiedBins.append(bin)
-                    freedSpace += bin.size
-                }
-            } catch {
-                failedBins.append(FailedTrashBin(bin: bin, error: error.localizedDescription))
-            }
+            let result = await empty(bin: bin, dryRun: dryRun)
+            emptiedBins.append(contentsOf: result.emptiedBins)
+            failedBins.append(contentsOf: result.failedBins)
+            freedSpace += result.freedSpace
         }
         
         return TrashEmptyResult(emptiedBins: emptiedBins, failedBins: failedBins, freedSpace: freedSpace)

@@ -234,50 +234,11 @@ public actor iTunesScanner {
 }
 
 public actor iTunesJunkCleaner {
+    private let baseCleaner = BaseCleaner<iTunesJunkItem>()
+    
     public init() {}
     
     public func clean(items: [iTunesJunkItem], dryRun: Bool = true) async throws -> CleanupResult {
-        var deletedItems: [CleanupItem] = []
-        var failedItems: [FailedItem] = []
-        var freedSpace: Int64 = 0
-        
-        for item in items {
-            do {
-                if dryRun {
-                    let cleanupItem = CleanupItem(
-                        path: item.path,
-                        category: .temporary,
-                        size: item.size,
-                        isDirectory: item.isDirectory
-                    )
-                    deletedItems.append(cleanupItem)
-                    freedSpace += item.size
-                } else {
-                    _ = try FileUtils.moveToTrash(at: item.path)
-                    let cleanupItem = CleanupItem(
-                        path: item.path,
-                        category: .temporary,
-                        size: item.size,
-                        isDirectory: item.isDirectory
-                    )
-                    deletedItems.append(cleanupItem)
-                    freedSpace += item.size
-                }
-            } catch {
-                let cleanupItem = CleanupItem(
-                    path: item.path,
-                    category: .temporary,
-                    size: item.size,
-                    isDirectory: item.isDirectory
-                )
-                failedItems.append(FailedItem(item: cleanupItem, error: error.localizedDescription))
-            }
-        }
-        
-        return CleanupResult(
-            deletedItems: deletedItems,
-            failedItems: failedItems,
-            freedSpace: freedSpace
-        )
+        try await baseCleaner.clean(items: items, dryRun: dryRun)
     }
 }

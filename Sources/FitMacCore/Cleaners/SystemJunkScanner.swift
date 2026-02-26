@@ -26,8 +26,9 @@ public struct SystemJunkItem: Identifiable, Codable, Hashable {
     public let isDirectory: Bool
     public let description: String?
     public let modifiedDate: Date?
+    public let subItemPaths: [URL]?
     
-    public init(path: URL, category: SystemJunkCategory, size: Int64, isDirectory: Bool, description: String? = nil, modifiedDate: Date? = nil) {
+    public init(path: URL, category: SystemJunkCategory, size: Int64, isDirectory: Bool, description: String? = nil, modifiedDate: Date? = nil, subItemPaths: [URL]? = nil) {
         self.id = UUID()
         self.path = path
         self.category = category
@@ -35,6 +36,7 @@ public struct SystemJunkItem: Identifiable, Codable, Hashable {
         self.isDirectory = isDirectory
         self.description = description
         self.modifiedDate = modifiedDate
+        self.subItemPaths = subItemPaths
     }
 }
 
@@ -184,30 +186,32 @@ public actor SystemJunkScanner {
             homeDir.appendingPathComponent("Downloads")
         ]
         
+        var dsStoreFiles: [URL] = []
         var dsStoreSize: Int64 = 0
-        var dsStoreCount = 0
         
         for searchPath in searchPaths {
-            if let dsStoreItems = await findDSStoreFiles(in: searchPath) {
-                dsStoreSize += dsStoreItems.0
-                dsStoreCount += dsStoreItems.1
+            if let result = await findDSStoreFiles(in: searchPath) {
+                dsStoreFiles.append(contentsOf: result.paths)
+                dsStoreSize += result.totalSize
             }
         }
         
-        if dsStoreCount > 0 {
+        if !dsStoreFiles.isEmpty {
+            let virtualPath = homeDir.appendingPathComponent(".DS_Store_Collection")
             items.append(SystemJunkItem(
-                path: homeDir,
+                path: virtualPath,
                 category: .systemLeftovers,
                 size: dsStoreSize,
                 isDirectory: false,
-                description: "\(dsStoreCount) .DS_Store files found"
+                description: "\(dsStoreFiles.count) .DS_Store files found",
+                subItemPaths: dsStoreFiles
             ))
         }
         
         return items
     }
     
-    private func findDSStoreFiles(in directory: URL) async -> (Int64, Int)? {
+    private func findDSStoreFiles(in directory: URL) async -> (paths: [URL], totalSize: Int64)? {
         let fileManager = FileManager.default
         
         guard let enumerator = fileManager.enumerator(
@@ -218,16 +222,16 @@ public actor SystemJunkScanner {
             return nil
         }
         
+        var paths: [URL] = []
         var totalSize: Int64 = 0
-        var count = 0
         
         for case let fileURL as URL in enumerator {
             if fileURL.lastPathComponent == ".DS_Store" {
                 do {
                     let resourceValues = try fileURL.resourceValues(forKeys: [.fileSizeKey])
                     if let fileSize = resourceValues.fileSize {
+                        paths.append(fileURL)
                         totalSize += Int64(fileSize)
-                        count += 1
                     }
                 } catch {
                     continue
@@ -235,7 +239,7 @@ public actor SystemJunkScanner {
             }
         }
         
-        return count > 0 ? (totalSize, count) : nil
+        return !paths.isEmpty ? (paths, totalSize) : nil
     }
     
     private func scanPath(_ url: URL, category: SystemJunkCategory, description: String?) async -> SystemJunkItem? {
@@ -296,21 +300,29 @@ public actor SystemJunkCleaner {
         var freedSpace: Int64 = 0
         
         for item in items {
-            do {
-                if dryRun {
-                    let cleanupItem = CleanupItem(
-                        path: item.path,
-                        category: .temporary,
-                        size: item.size,
-                        isDirectory: item.isDirectory
-                    )
-                    deletedItems.append(cleanupItem)
-                    freedSpace += item.size
-                } else {
-                    if item.isDirectory {
-                        _ = try FileUtils.moveToTrash(at: item.path)
-                    } else {
-                        _ = try FileUtils.moveToTrash(at: item.path)
+            if dryRun {
+                let cleanupItem = CleanupItem(
+                    path: item.path,
+                    category: .temporary,
+                    size: item.size,
+                    isDirectory: item.isDirectory
+                )
+                deletedItems.append(cleanupItem)
+                freedSpace += item.size
+            } else {
+                if let subPaths = item.subItemPaths {
+                    for subPath in subPaths {
+                        do {
+                            _ = try FileUtils.moveToTrash(at: subPath)
+                        } catch {
+                            let cleanupItem = CleanupItem(
+                                path: subPath,
+                                category: .temporary,
+                                size: 0,
+                                isDirectory: false
+                            )
+                            failedItems.append(FailedItem(item: cleanupItem, error: error.localizedDescription))
+                        }
                     }
                     let cleanupItem = CleanupItem(
                         path: item.path,
@@ -320,15 +332,27 @@ public actor SystemJunkCleaner {
                     )
                     deletedItems.append(cleanupItem)
                     freedSpace += item.size
+                } else {
+                    do {
+                        _ = try FileUtils.moveToTrash(at: item.path)
+                        let cleanupItem = CleanupItem(
+                            path: item.path,
+                            category: .temporary,
+                            size: item.size,
+                            isDirectory: item.isDirectory
+                        )
+                        deletedItems.append(cleanupItem)
+                        freedSpace += item.size
+                    } catch {
+                        let cleanupItem = CleanupItem(
+                            path: item.path,
+                            category: .temporary,
+                            size: item.size,
+                            isDirectory: item.isDirectory
+                        )
+                        failedItems.append(FailedItem(item: cleanupItem, error: error.localizedDescription))
+                    }
                 }
-            } catch {
-                let cleanupItem = CleanupItem(
-                    path: item.path,
-                    category: .temporary,
-                    size: item.size,
-                    isDirectory: item.isDirectory
-                )
-                failedItems.append(FailedItem(item: cleanupItem, error: error.localizedDescription))
             }
         }
         

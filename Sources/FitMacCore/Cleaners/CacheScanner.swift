@@ -60,32 +60,11 @@ public actor CacheScanner {
 }
 
 public actor CacheCleaner {
+    private let baseCleaner = BaseCleaner<CleanupItem>()
+    
     public init() {}
     
     public func clean(items: [CleanupItem], dryRun: Bool = true) async throws -> CleanupResult {
-        var deletedItems: [CleanupItem] = []
-        var failedItems: [FailedItem] = []
-        var freedSpace: Int64 = 0
-        
-        for item in items {
-            do {
-                if dryRun {
-                    deletedItems.append(item)
-                    freedSpace += item.size
-                } else {
-                    _ = try FileUtils.moveToTrash(at: item.path)
-                    deletedItems.append(item)
-                    freedSpace += item.size
-                }
-            } catch {
-                failedItems.append(FailedItem(item: item, error: error.localizedDescription))
-            }
-        }
-        
-        return CleanupResult(
-            deletedItems: deletedItems,
-            failedItems: failedItems,
-            freedSpace: freedSpace
-        )
+        try await baseCleaner.clean(items: items, dryRun: dryRun)
     }
 }

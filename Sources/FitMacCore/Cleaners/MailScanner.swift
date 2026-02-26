@@ -247,50 +247,11 @@ public actor MailScanner {
 }
 
 public actor MailCleaner {
+    private let baseCleaner = BaseCleaner<MailAttachment>()
+    
     public init() {}
     
     public func clean(attachments: [MailAttachment], dryRun: Bool = true) async throws -> CleanupResult {
-        var deletedItems: [CleanupItem] = []
-        var failedItems: [FailedItem] = []
-        var freedSpace: Int64 = 0
-        
-        for attachment in attachments {
-            do {
-                if dryRun {
-                    let cleanupItem = CleanupItem(
-                        path: attachment.path,
-                        category: .temporary,
-                        size: attachment.size,
-                        isDirectory: false
-                    )
-                    deletedItems.append(cleanupItem)
-                    freedSpace += attachment.size
-                } else {
-                    _ = try FileUtils.moveToTrash(at: attachment.path)
-                    let cleanupItem = CleanupItem(
-                        path: attachment.path,
-                        category: .temporary,
-                        size: attachment.size,
-                        isDirectory: false
-                    )
-                    deletedItems.append(cleanupItem)
-                    freedSpace += attachment.size
-                }
-            } catch {
-                let cleanupItem = CleanupItem(
-                    path: attachment.path,
-                    category: .temporary,
-                    size: attachment.size,
-                    isDirectory: false
-                )
-                failedItems.append(FailedItem(item: cleanupItem, error: error.localizedDescription))
-            }
-        }
-        
-        return CleanupResult(
-            deletedItems: deletedItems,
-            failedItems: failedItems,
-            freedSpace: freedSpace
-        )
+        try await baseCleaner.clean(items: attachments, dryRun: dryRun)
     }
 }

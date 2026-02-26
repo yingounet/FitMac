@@ -45,6 +45,11 @@ public struct LanguageScanResult: Codable {
 public actor LanguageScanner {
     public init() {}
     
+    public static let protectedLanguageCodes: Set<String> = [
+        "Base",
+        "en",
+    ]
+    
     public func scan() async throws -> LanguageScanResult {
         let currentLanguage = getCurrentLanguage()
         var items: [LanguageFile] = []
@@ -137,12 +142,10 @@ public actor LanguageScanner {
             return true
         }
         
-        if normalizedCode == "en" && normalizedCurrent.hasPrefix("en") {
+        if Self.protectedLanguageCodes.contains(normalizedCode) {
             return true
         }
-        if normalizedCode == "base" {
-            return true
-        }
+        
         if normalizedCurrent.hasPrefix("zh") {
             if normalizedCode == "zh-hans" && normalizedCurrent.contains("hans") {
                 return true
@@ -170,52 +173,16 @@ public actor LanguageScanner {
 }
 
 public actor LanguageCleaner {
+    private let baseCleaner = BaseCleaner<LanguageFile>()
+    
     public init() {}
     
     public func clean(items: [LanguageFile], dryRun: Bool = true) async throws -> CleanupResult {
-        var deletedItems: [CleanupItem] = []
-        var failedItems: [FailedItem] = []
-        var freedSpace: Int64 = 0
-        
-        for item in items {
-            guard !item.isCurrentLanguage else { continue }
-            
-            do {
-                if dryRun {
-                    let cleanupItem = CleanupItem(
-                        path: item.lprojPath,
-                        category: .temporary,
-                        size: item.size,
-                        isDirectory: true
-                    )
-                    deletedItems.append(cleanupItem)
-                    freedSpace += item.size
-                } else {
-                    _ = try FileUtils.moveToTrash(at: item.lprojPath)
-                    let cleanupItem = CleanupItem(
-                        path: item.lprojPath,
-                        category: .temporary,
-                        size: item.size,
-                        isDirectory: true
-                    )
-                    deletedItems.append(cleanupItem)
-                    freedSpace += item.size
-                }
-            } catch {
-                let cleanupItem = CleanupItem(
-                    path: item.lprojPath,
-                    category: .temporary,
-                    size: item.size,
-                    isDirectory: true
-                )
-                failedItems.append(FailedItem(item: cleanupItem, error: error.localizedDescription))
-            }
+        try await baseCleaner.clean(items: items, dryRun: dryRun) { item in
+            guard !item.isCurrentLanguage else { return false }
+            let languageCode = item.languageCode.lowercased()
+            guard !LanguageScanner.protectedLanguageCodes.contains(languageCode) else { return false }
+            return true
         }
-        
-        return CleanupResult(
-            deletedItems: deletedItems,
-            failedItems: failedItems,
-            freedSpace: freedSpace
-        )
     }
 }
