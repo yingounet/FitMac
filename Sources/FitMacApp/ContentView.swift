@@ -8,6 +8,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case trash = "Trash"
     case language = "Language"
     case iTunes = "iTunes"
+    case mail = "Mail"
     case largeFiles = "Large Files"
     case uninstall = "Uninstall"
     case history = "History"
@@ -23,6 +24,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .trash: return "trash"
         case .language: return "globe"
         case .iTunes: return "music.note"
+        case .mail: return "envelope.fill"
         case .largeFiles: return "doc.fill"
         case .uninstall: return "xmark.bin.fill"
         case .history: return "clock.arrow.circlepath"
@@ -58,6 +60,8 @@ struct ContentView: View {
                 LanguageFilesView()
             case .iTunes:
                 iTunesView()
+            case .mail:
+                MailAttachmentsView()
             case .largeFiles:
                 LargeFilesView()
             case .uninstall:
