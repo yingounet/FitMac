@@ -30,7 +30,7 @@ struct LargeCommand: AsyncParsableCommand {
         let scanPath = path.map { URL(fileURLWithPath: NSString(string: $0).expandingTildeInPath) }
             ?? FileManager.default.homeDirectoryForCurrentUser
         
-        let minBytes = parseSize(min)
+        let minBytes = PathUtils.parseSize(min)
         
         print("Scanning for files larger than \(min) in \(shortenPath(scanPath.path))...")
         
@@ -97,22 +97,43 @@ struct LargeCommand: AsyncParsableCommand {
         print("╠══════════════════════════════════════════════════════════╣")
         print("║ Total: \(limitedFiles.count) files, \(pad(SizeFormatter.format(totalSize), to: 41))║")
         print("╚══════════════════════════════════════════════════════════╝")
-    }
-    
-    private func parseSize(_ string: String) -> Int64 {
-        let str = string.uppercased().replacingOccurrences(of: " ", with: "")
         
-        if str.hasSuffix("GB") {
-            let value = Double(str.dropLast(2)) ?? 0
-            return Int64(value * 1_073_741_824)
-        } else if str.hasSuffix("MB") {
-            let value = Double(str.dropLast(2)) ?? 0
-            return Int64(value * 1_048_576)
-        } else if str.hasSuffix("KB") {
-            let value = Double(str.dropLast(2)) ?? 0
-            return Int64(value * 1024)
-        } else {
-            return Int64(str) ?? 0
+        if delete {
+            if !force {
+                print("\n⚠️  This will move \(limitedFiles.count) files (\(SizeFormatter.format(totalSize))) to Trash")
+                print("Continue? [y/N]: ", terminator: "")
+                guard readLine()?.lowercased() == "y" else {
+                    print("Cancelled.")
+                    return
+                }
+            }
+            
+            print("\nMoving files to trash...")
+            var successCount = 0
+            var failedCount = 0
+            
+            for file in limitedFiles {
+                do {
+                    _ = try FileUtils.moveToTrash(at: file.path)
+                    print("✅ \(shortenPath(file.path.path))")
+                    successCount += 1
+                } catch {
+                    print("❌ \(shortenPath(file.path.path)): \(error.localizedDescription)")
+                    failedCount += 1
+                }
+            }
+            
+            print("\n📊 Summary: \(successCount) moved, \(failedCount) failed")
+            
+            if successCount > 0 {
+                let log = CleanupLog(
+                    operation: "Large Files Cleanup (CLI)",
+                    itemsDeleted: successCount,
+                    freedSpace: totalSize,
+                    details: limitedFiles.prefix(successCount).map { $0.path.path }
+                )
+                try? await CleanupLogger.shared.log(log)
+            }
         }
     }
 }

@@ -73,11 +73,7 @@ public actor CacheCleaner {
                     deletedItems.append(item)
                     freedSpace += item.size
                 } else {
-                    if item.isDirectory {
-                        try FileManager.default.removeItem(at: item.path)
-                    } else {
-                        _ = try FileUtils.moveToTrash(at: item.path)
-                    }
+                    _ = try FileUtils.moveToTrash(at: item.path)
                     deletedItems.append(item)
                     freedSpace += item.size
                 }

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import FitMacCore
 
 @main
 @available(macOS 12, *)
@@ -19,7 +20,7 @@ struct FitMacCLI: AsyncParsableCommand {
               fitmac large --min 500MB         Find large files over 500MB
               fitmac uninstall "WeChat"        Find app leftovers
             """,
-        subcommands: [StatusCommand.self, CacheCommand.self, LargeCommand.self, UninstallCommand.self],
+        subcommands: [StatusCommand.self, CacheCommand.self, LargeCommand.self, UninstallCommand.self, LogCommand.self],
         defaultSubcommand: StatusCommand.self
     )
 }
@@ -37,9 +38,5 @@ func pad(_ string: String, to length: Int) -> String {
 }
 
 func shortenPath(_ path: String) -> String {
-    let home = FileManager.default.homeDirectoryForCurrentUser.path
-    if path.hasPrefix(home) {
-        return "~" + path.dropFirst(home.count)
-    }
-    return path
+    PathUtils.shorten(path)
 }

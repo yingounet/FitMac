@@ -11,9 +11,12 @@ final class CacheViewModel: ObservableObject {
     @Published var selectedItems: Set<URL> = []
     @Published var cleanupResult: CleanupResult?
     @Published var errorMessage: String?
+    @Published var scannedCount: Int = 0
+    @Published var isCancelled = false
     
     private let scanner = CacheScanner()
     private let cleaner = CacheCleaner()
+    private var scanTask: Task<Void, Never>?
     
     var totalSelectedSize: Int64 {
         guard let result = scanResult else { return 0 }
@@ -22,17 +25,36 @@ final class CacheViewModel: ObservableObject {
             .reduce(0) { $0 + $1.size }
     }
     
-    func scan() async {
+    func scan() {
+        cancelScan()
+        isCancelled = false
+        scanTask = Task { [weak self] in
+            await self?.performScan()
+        }
+    }
+    
+    func cancelScan() {
+        scanTask?.cancel()
+        scanTask = nil
+        isScanning = false
+        isCancelled = true
+    }
+    
+    private func performScan() async {
         isScanning = true
         errorMessage = nil
         cleanupResult = nil
+        scannedCount = 0
         
         do {
             let categories = Array(selectedCategories)
             scanResult = try await scanner.scan(categories: categories)
             selectedItems = Set(scanResult?.items.map(\.path) ?? [])
+            scannedCount = scanResult?.items.count ?? 0
         } catch {
-            errorMessage = error.localizedDescription
+            if !Task.isCancelled {
+                errorMessage = error.localizedDescription
+            }
         }
         
         isScanning = false
@@ -49,6 +71,16 @@ final class CacheViewModel: ObservableObject {
         
         do {
             cleanupResult = try await cleaner.clean(items: itemsToClean, dryRun: dryRun)
+            
+            if !dryRun, let cleanupResult = cleanupResult {
+                let log = CleanupLog(
+                    operation: "Cache Cleanup",
+                    itemsDeleted: cleanupResult.deletedItems.count,
+                    freedSpace: cleanupResult.freedSpace,
+                    details: cleanupResult.deletedItems.map { $0.path.path }
+                )
+                try? await CleanupLogger.shared.log(log)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

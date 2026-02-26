@@ -77,18 +77,26 @@ struct CacheView: View {
             }
             
             Button {
-                Task { await viewModel.scan() }
+                if viewModel.isScanning {
+                    viewModel.cancelScan()
+                } else {
+                    viewModel.scan()
+                }
             } label: {
                 if viewModel.isScanning {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .frame(width: 20, height: 20)
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 16, height: 16)
+                        Text("Cancel")
+                    }
                 } else {
                     Label("Scan", systemImage: "magnifyingglass")
                 }
             }
-            .disabled(viewModel.isScanning || viewModel.selectedCategories.isEmpty)
+            .disabled(viewModel.isCleaning || viewModel.selectedCategories.isEmpty)
             .buttonStyle(.borderedProminent)
+            .tint(viewModel.isScanning ? .red : .blue)
             
             if viewModel.scanResult != nil && !viewModel.selectedItems.isEmpty {
                 Button {
@@ -111,6 +119,11 @@ struct CacheView: View {
                 .scaleEffect(1.5)
             Text("Scanning cache files...")
                 .foregroundStyle(.secondary)
+            if viewModel.scannedCount > 0 {
+                Text("\(viewModel.scannedCount) locations found")
+                    .font(.headline)
+                    .foregroundStyle(.blue)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -236,11 +249,7 @@ struct CacheItemRow: View {
     }
     
     private func shortenPath(_ path: String) -> String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        if path.hasPrefix(home) {
-            return "~" + path.dropFirst(home.count)
-        }
-        return path
+        PathUtils.shorten(path)
     }
 }
 

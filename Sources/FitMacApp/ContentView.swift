@@ -6,6 +6,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case cache = "Cache"
     case largeFiles = "Large Files"
     case uninstall = "Uninstall"
+    case history = "History"
+    case permissions = "Permissions"
     
     var id: String { rawValue }
     
@@ -15,6 +17,8 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .cache: return "trash.circle.fill"
         case .largeFiles: return "doc.fill"
         case .uninstall: return "xmark.bin.fill"
+        case .history: return "clock.arrow.circlepath"
+        case .permissions: return "lock.shield.fill"
         }
     }
     
@@ -35,13 +39,17 @@ struct ContentView: View {
         } detail: {
             switch selectedSidebarItem {
             case .home:
-                HomeView()
+                HomeView(selectedSidebarItem: $selectedSidebarItem)
             case .cache:
                 CacheView()
             case .largeFiles:
                 LargeFilesView()
             case .uninstall:
                 UninstallView()
+            case .history:
+                LogView()
+            case .permissions:
+                FullDiskAccessView()
             case .none:
                 Text("Select a feature")
                     .foregroundStyle(.secondary)

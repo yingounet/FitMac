@@ -3,10 +3,15 @@ import FitMacCore
 
 struct HomeView: View {
     @StateObject private var viewModel = DiskStatusViewModel()
+    @State private var hasFullDiskAccess = true
+    @Binding var selectedSidebarItem: SidebarItem?
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                if !hasFullDiskAccess {
+                    permissionWarningBanner
+                }
                 headerSection
                 diskStatusSection
                 quickActionsSection
@@ -14,7 +19,42 @@ struct HomeView: View {
             .padding()
         }
         .navigationTitle("Home")
-        .onAppear { viewModel.refresh() }
+        .onAppear {
+            viewModel.refresh()
+            hasFullDiskAccess = PermissionHelper.hasFullDiskAccess()
+        }
+        .onChange(of: selectedSidebarItem) { newValue in
+            if newValue == .home {
+                viewModel.refresh()
+            }
+        }
+    }
+    
+    private var permissionWarningBanner: some View {
+        Link(destination: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!) {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Full Disk Access Required")
+                        .font(.headline)
+                    Text("Click to enable in System Settings")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.orange.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
     }
     
     private var headerSection: some View {
@@ -64,25 +104,33 @@ struct HomeView: View {
                     title: "Clean Cache",
                     description: "Scan and clean system & app caches",
                     color: .orange
-                )
+                ) {
+                    selectedSidebarItem = .cache
+                }
                 QuickActionCard(
                     icon: "doc.fill",
                     title: "Find Large Files",
                     description: "Locate large files taking up space",
                     color: .purple
-                )
+                ) {
+                    selectedSidebarItem = .largeFiles
+                }
                 QuickActionCard(
                     icon: "xmark.bin.fill",
                     title: "Uninstall Apps",
                     description: "Remove apps with all leftovers",
                     color: .red
-                )
+                ) {
+                    selectedSidebarItem = .uninstall
+                }
                 QuickActionCard(
-                    icon: "gearshape.fill",
-                    title: "System Status",
-                    description: "View detailed disk information",
+                    icon: "clock.arrow.circlepath",
+                    title: "View History",
+                    description: "Check past cleanup operations",
                     color: .blue
-                )
+                ) {
+                    selectedSidebarItem = .history
+                }
             }
             .padding()
         }
@@ -148,32 +196,41 @@ struct QuickActionCard: View {
     let title: String
     let description: String
     let color: Color
+    let action: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title)
-                .foregroundStyle(color)
-                .frame(width: 40)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline)
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+        Button {
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title)
+                    .foregroundStyle(color)
+                    .frame(width: 40)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.tertiary)
             }
-            
-            Spacer()
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .buttonStyle(.plain)
     }
 }
 
 #Preview {
-    HomeView()
+    HomeView(selectedSidebarItem: .constant(.home))
         .frame(width: 700, height: 600)
 }

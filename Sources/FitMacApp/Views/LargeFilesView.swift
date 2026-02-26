@@ -74,18 +74,25 @@ struct LargeFilesView: View {
             }
             
             Button {
-                Task { await viewModel.scan() }
+                if viewModel.isScanning {
+                    viewModel.cancelScan()
+                } else {
+                    viewModel.scan()
+                }
             } label: {
                 if viewModel.isScanning {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .frame(width: 20, height: 20)
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 16, height: 16)
+                        Text("Cancel")
+                    }
                 } else {
                     Label("Scan", systemImage: "magnifyingglass")
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(viewModel.isScanning)
+            .tint(viewModel.isScanning ? .red : .blue)
         }
         .padding()
         .background(Color.gray.opacity(0.05))
@@ -97,7 +104,10 @@ struct LargeFilesView: View {
                 .scaleEffect(1.5)
             Text("Scanning for large files...")
                 .foregroundStyle(.secondary)
-            Text("Path: \(viewModel.scanPath.path)")
+            Text("\(viewModel.scannedCount) files scanned")
+                .font(.headline)
+                .foregroundStyle(.blue)
+            Text("Path: \(PathUtils.shorten(viewModel.scanPath.path))")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
@@ -202,11 +212,7 @@ struct LargeFileRow: View {
     }
     
     private func shortenPath(_ path: String) -> String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        if path.hasPrefix(home) {
-            return "~" + path.dropFirst(home.count)
-        }
-        return path
+        PathUtils.shorten(path)
     }
     
     private func iconForFileType(_ type: String) -> String {

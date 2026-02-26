@@ -10,11 +10,21 @@ final class FitMacCoreTests: XCTestCase {
         XCTAssertTrue(SizeFormatter.format(Int64(1073741824)).contains("1"))
     }
     
+    func testSizeFormatterUInt64() {
+        XCTAssertEqual(SizeFormatter.format(UInt64(1024)), SizeFormatter.format(Int64(1024)))
+    }
+    
     func testCacheCategory() {
         XCTAssertEqual(CacheCategory.systemCache.displayName, "System Cache")
         XCTAssertEqual(CacheCategory.appCache.displayName, "Application Cache")
         XCTAssertEqual(CacheCategory.browserCache.displayName, "Browser Cache")
         XCTAssertEqual(CacheCategory.devCache.displayName, "Developer Cache")
+        XCTAssertEqual(CacheCategory.logs.displayName, "Logs")
+        XCTAssertEqual(CacheCategory.temporary.displayName, "Temporary Files")
+    }
+    
+    func testCacheCategoryAllCases() {
+        XCTAssertEqual(CacheCategory.allCases.count, 6)
     }
     
     func testCleanupItem() {
@@ -29,6 +39,20 @@ final class FitMacCoreTests: XCTestCase {
         XCTAssertEqual(item.size, 1024)
         XCTAssertEqual(item.category, .systemCache)
         XCTAssertFalse(item.isDirectory)
+    }
+    
+    func testCleanupItemWithDirectory() {
+        let item = CleanupItem(
+            path: URL(fileURLWithPath: "/tmp/testdir"),
+            category: .appCache,
+            size: 2048,
+            isDirectory: true,
+            modifiedDate: Date()
+        )
+        
+        XCTAssertTrue(item.isDirectory)
+        XCTAssertEqual(item.category, .appCache)
+        XCTAssertNotNil(item.modifiedDate)
     }
     
     func testScanResult() {
@@ -47,6 +71,12 @@ final class FitMacCoreTests: XCTestCase {
         XCTAssertEqual(result.categories[.browserCache], 300)
     }
     
+    func testScanResultEmpty() {
+        let result = ScanResult(items: [])
+        XCTAssertEqual(result.totalSize, 0)
+        XCTAssertTrue(result.items.isEmpty)
+    }
+    
     func testDiskStatus() {
         let status = DiskStatus(
             totalSpace: 1000,
@@ -61,10 +91,40 @@ final class FitMacCoreTests: XCTestCase {
         XCTAssertEqual(status.usedPercentage, 75.0, accuracy: 0.01)
     }
     
+    func testDiskStatusPercentage() {
+        let status1 = DiskStatus(totalSpace: 100, usedSpace: 0, availableSpace: 100, volumeName: "Test")
+        XCTAssertEqual(status1.usedPercentage, 0, accuracy: 0.01)
+        
+        let status2 = DiskStatus(totalSpace: 100, usedSpace: 100, availableSpace: 0, volumeName: "Test")
+        XCTAssertEqual(status2.usedPercentage, 100, accuracy: 0.01)
+    }
+    
     func testCachePathsExpansion() {
         let expandedPath = CachePaths.expandedPath("~/Library/Caches")
         XCTAssertTrue(expandedPath.path.contains("Library/Caches"))
         XCTAssertFalse(expandedPath.path.hasPrefix("~"))
+    }
+    
+    func testCachePathsSystemPaths() {
+        let paths = CachePaths.systemCachePaths
+        XCTAssertFalse(paths.isEmpty)
+    }
+    
+    func testCachePathsBrowserPaths() {
+        let paths = CachePaths.browserCachePaths
+        XCTAssertFalse(paths.isEmpty)
+        XCTAssertTrue(paths.contains { $0.path.contains("Safari") || $0.path.contains("Chrome") })
+    }
+    
+    func testCachePathsDevPaths() {
+        let paths = CachePaths.devCachePaths
+        XCTAssertFalse(paths.isEmpty)
+        XCTAssertTrue(paths.contains { $0.path.contains("Xcode") || $0.path.contains("npm") })
+    }
+    
+    func testCachePathsAllPaths() {
+        let allPaths = CachePaths.allCachePaths
+        XCTAssertFalse(allPaths.isEmpty)
     }
     
     func testAppLeftoverPaths() {
@@ -73,5 +133,142 @@ final class FitMacCoreTests: XCTestCase {
         
         let hasPreferencesPath = paths.contains { $0.path.contains("Preferences") }
         XCTAssertTrue(hasPreferencesPath)
+    }
+    
+    func testAppLeftoverPathsContainsExpectedLocations() {
+        let paths = AppLeftoverPaths.searchPaths(for: "com.test.app")
+        let pathStrings = paths.map { $0.path }
+        
+        XCTAssertTrue(pathStrings.contains { $0.contains("Preferences") })
+        XCTAssertTrue(pathStrings.contains { $0.contains("Application Support") })
+        XCTAssertTrue(pathStrings.contains { $0.contains("Caches") })
+        XCTAssertTrue(pathStrings.contains { $0.contains("Containers") })
+        XCTAssertTrue(pathStrings.contains { $0.contains("Logs") })
+    }
+    
+    func testFailedItem() {
+        let item = CleanupItem(path: URL(fileURLWithPath: "/tmp/test"), category: .systemCache, size: 100)
+        let failed = FailedItem(item: item, error: "Test error")
+        
+        XCTAssertEqual(failed.item.size, 100)
+        XCTAssertEqual(failed.error, "Test error")
+    }
+    
+    func testCleanupResult() {
+        let deleted = [
+            CleanupItem(path: URL(fileURLWithPath: "/tmp/a"), category: .systemCache, size: 100),
+            CleanupItem(path: URL(fileURLWithPath: "/tmp/b"), category: .systemCache, size: 200),
+        ]
+        let failed: [FailedItem] = []
+        
+        let result = CleanupResult(deletedItems: deleted, failedItems: failed, freedSpace: 300)
+        
+        XCTAssertEqual(result.deletedItems.count, 2)
+        XCTAssertEqual(result.freedSpace, 300)
+        XCTAssertTrue(result.failedItems.isEmpty)
+    }
+    
+    func testCleanupResultWithFailedItems() {
+        let deleted = [CleanupItem(path: URL(fileURLWithPath: "/tmp/a"), category: .systemCache, size: 100)]
+        let failedItems: [(CleanupItem, String)] = [
+            (CleanupItem(path: URL(fileURLWithPath: "/tmp/b"), category: .systemCache, size: 200), "Access denied")
+        ]
+        
+        let result = CleanupResult(deletedItems: deleted, failedItems: failedItems, freedSpace: 100)
+        
+        XCTAssertEqual(result.deletedItems.count, 1)
+        XCTAssertEqual(result.failedItems.count, 1)
+        XCTAssertEqual(result.failedItems[0].error, "Access denied")
+    }
+    
+    func testAppInfo() {
+        let app = AppInfo(
+            name: "TestApp",
+            bundleIdentifier: "com.test.app",
+            path: URL(fileURLWithPath: "/Applications/TestApp.app"),
+            version: "1.0.0",
+            size: 1024000
+        )
+        
+        XCTAssertEqual(app.name, "TestApp")
+        XCTAssertEqual(app.bundleIdentifier, "com.test.app")
+        XCTAssertEqual(app.version, "1.0.0")
+        XCTAssertEqual(app.size, 1024000)
+        XCTAssertEqual(app.id, "com.test.app")
+    }
+    
+    func testLargeFile() {
+        let file = LargeFile(
+            path: URL(fileURLWithPath: "/tmp/large.zip"),
+            size: 500_000_000,
+            modifiedDate: Date(),
+            fileType: "public.zip-archive"
+        )
+        
+        XCTAssertEqual(file.size, 500_000_000)
+        XCTAssertEqual(file.fileType, "public.zip-archive")
+        XCTAssertNotNil(file.modifiedDate)
+    }
+    
+    func testCleanupLog() {
+        let log = CleanupLog(
+            operation: "Cache Cleanup",
+            itemsDeleted: 10,
+            freedSpace: 1024000,
+            details: ["/tmp/a", "/tmp/b"]
+        )
+        
+        XCTAssertEqual(log.operation, "Cache Cleanup")
+        XCTAssertEqual(log.itemsDeleted, 10)
+        XCTAssertEqual(log.freedSpace, 1024000)
+        XCTAssertEqual(log.details.count, 2)
+    }
+    
+    func testCleanupLogCoding() throws {
+        let log = CleanupLog(
+            operation: "Test Operation",
+            itemsDeleted: 5,
+            freedSpace: 2048,
+            details: []
+        )
+        
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(log)
+        
+        let decoder = JSONDecoder()
+        let decoded = try decoder.decode(CleanupLog.self, from: data)
+        
+        XCTAssertEqual(decoded.operation, log.operation)
+        XCTAssertEqual(decoded.itemsDeleted, log.itemsDeleted)
+        XCTAssertEqual(decoded.freedSpace, log.freedSpace)
+    }
+    
+    func testFitMacLogDirectory() {
+        XCTAssertTrue(fitMacLogDirectory.path.contains("Library/Logs/FitMac"))
+    }
+    
+    func testFileUtilsIsDirectory() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+        XCTAssertTrue(try FileUtils.isDirectory(at: tempDir))
+        
+        let tempFile = tempDir.appendingPathComponent("test_file_\(UUID().uuidString)")
+        FileManager.default.createFile(atPath: tempFile.path, contents: nil)
+        defer { try? FileManager.default.removeItem(at: tempFile) }
+        
+        XCTAssertFalse(try FileUtils.isDirectory(at: tempFile))
+    }
+    
+    func testFileUtilsMoveToTrash() throws {
+        let tempFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent("test_trash_\(UUID().uuidString)")
+        FileManager.default.createFile(atPath: tempFile.path, contents: "test".data(using: .utf8))
+        
+        let trashURL = try FileUtils.moveToTrash(at: tempFile)
+        XCTAssertNotNil(trashURL)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempFile.path))
+    }
+    
+    func testPermissionUtilsHasFullDiskAccess() {
+        let _ = PermissionUtils.hasFullDiskAccess()
     }
 }

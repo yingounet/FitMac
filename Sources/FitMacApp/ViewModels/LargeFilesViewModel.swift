@@ -12,6 +12,10 @@ final class LargeFilesViewModel: ObservableObject {
     @Published var sortBy: SortOption = .size
     @Published var maxResults = 50
     @Published var errorMessage: String?
+    @Published var scannedCount: Int = 0
+    @Published var isCancelled = false
+    
+    private var scanTask: Task<Void, Never>?
     
     enum SortOption: String, CaseIterable {
         case size = "Size"
@@ -19,7 +23,7 @@ final class LargeFilesViewModel: ObservableObject {
     }
     
     var minSizeBytes: Int64 {
-        parseSize(minSize)
+        PathUtils.parseSize(minSize)
     }
     
     var totalSelectedSize: Int64 {
@@ -27,10 +31,26 @@ final class LargeFilesViewModel: ObservableObject {
             .reduce(0) { $0 + $1.size }
     }
     
-    func scan() async {
+    func scan() {
+        cancelScan()
+        isCancelled = false
+        scanTask = Task { [weak self] in
+            await self?.performScan()
+        }
+    }
+    
+    func cancelScan() {
+        scanTask?.cancel()
+        scanTask = nil
+        isScanning = false
+        isCancelled = true
+    }
+    
+    private func performScan() async {
         isScanning = true
         errorMessage = nil
         selectedFiles = []
+        scannedCount = 0
         
         var foundFiles: [LargeFile] = []
         let fileManager = FileManager.default
@@ -46,6 +66,13 @@ final class LargeFilesViewModel: ObservableObject {
         }
         
         while let fileURL = enumerator.nextObject() as? URL {
+            if Task.isCancelled {
+                isScanning = false
+                return
+            }
+            
+            scannedCount += 1
+            
             do {
                 let resourceValues = try fileURL.resourceValues(forKeys: [
                     .fileSizeKey, .contentModificationDateKey, .typeIdentifierKey, .isDirectoryKey
@@ -82,6 +109,9 @@ final class LargeFilesViewModel: ObservableObject {
     
     func deleteSelected() async -> Bool {
         var success = true
+        let deletedFiles = files.filter { selectedFiles.contains($0.path) }
+        let totalFreed = totalSelectedSize
+        
         for path in selectedFiles {
             do {
                 _ = try FileUtils.moveToTrash(at: path)
@@ -91,24 +121,18 @@ final class LargeFilesViewModel: ObservableObject {
                 success = false
             }
         }
+        
+        if success && !deletedFiles.isEmpty {
+            let log = CleanupLog(
+                operation: "Large Files Cleanup",
+                itemsDeleted: deletedFiles.count,
+                freedSpace: totalFreed,
+                details: deletedFiles.map { $0.path.path }
+            )
+            try? await CleanupLogger.shared.log(log)
+        }
+        
         selectedFiles = []
         return success
-    }
-    
-    private func parseSize(_ string: String) -> Int64 {
-        let str = string.uppercased().replacingOccurrences(of: " ", with: "")
-        
-        if str.hasSuffix("GB") {
-            let value = Double(str.dropLast(2)) ?? 0
-            return Int64(value * 1_073_741_824)
-        } else if str.hasSuffix("MB") {
-            let value = Double(str.dropLast(2)) ?? 0
-            return Int64(value * 1_048_576)
-        } else if str.hasSuffix("KB") {
-            let value = Double(str.dropLast(2)) ?? 0
-            return Int64(value * 1024)
-        } else {
-            return Int64(str) ?? 0
-        }
     }
 }

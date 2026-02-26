@@ -88,6 +88,8 @@ final class UninstallViewModel: ObservableObject {
     
     func deleteLeftovers() -> Bool {
         var success = true
+        let deletedItems = foundLeftovers
+        
         for item in foundLeftovers {
             do {
                 _ = try FileUtils.moveToTrash(at: item.path)
@@ -96,7 +98,15 @@ final class UninstallViewModel: ObservableObject {
                 success = false
             }
         }
+        
         if success {
+            let log = CleanupLog(
+                operation: "App Leftover Cleanup",
+                itemsDeleted: deletedItems.count,
+                freedSpace: totalLeftoverSize,
+                details: deletedItems.map { $0.path.path }
+            )
+            Task { try? await CleanupLogger.shared.log(log) }
             foundLeftovers = []
         }
         return success
