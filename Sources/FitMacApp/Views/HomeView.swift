@@ -108,6 +108,14 @@ struct HomeView: View {
                     selectedSidebarItem = .cache
                 }
                 QuickActionCard(
+                    icon: "trash",
+                    title: "Empty Trash",
+                    description: "Empty all trash bins",
+                    color: .red
+                ) {
+                    selectedSidebarItem = .trash
+                }
+                QuickActionCard(
                     icon: "doc.fill",
                     title: "Find Large Files",
                     description: "Locate large files taking up space",
@@ -119,7 +127,7 @@ struct HomeView: View {
                     icon: "xmark.bin.fill",
                     title: "Uninstall Apps",
                     description: "Remove apps with all leftovers",
-                    color: .red
+                    color: .blue
                 ) {
                     selectedSidebarItem = .uninstall
                 }
@@ -127,7 +135,7 @@ struct HomeView: View {
                     icon: "clock.arrow.circlepath",
                     title: "View History",
                     description: "Check past cleanup operations",
-                    color: .blue
+                    color: .green
                 ) {
                     selectedSidebarItem = .history
                 }
