@@ -26,7 +26,7 @@ An open-source, free, and secure Mac cleaning tool with both GUI (SwiftUI) and C
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/FitMac.git
+git clone https://github.com/yingounet/FitMac.git
 cd FitMac
 
 # Build
@@ -124,13 +124,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-Inspired by:
-- [CleanMyMac](https://macpaw.com/cleanmymac)
-- [OnyX](https://www.titanium-software.fr/en/onyx.html)
-- [Pearcleaner](https://github.com/alienator88/Pearcleaner)
-
----
 
 **FitMac — Make Your Mac Fit Again!**
