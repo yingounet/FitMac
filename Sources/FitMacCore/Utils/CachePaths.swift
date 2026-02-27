@@ -25,13 +25,17 @@ public enum CachePaths {
     public static var browserCachePaths: [(path: String, category: CacheCategory)] {
         [
             ("~/Library/Caches/com.apple.Safari", .browserCache),
-            ("~/Library/Safari", .browserCache),
+            ("~/Library/Safari/LocalStorage", .browserCache),
+            ("~/Library/Safari/Databases", .browserCache),
             ("~/Library/Caches/Google/Chrome", .browserCache),
             ("~/Library/Application Support/Google/Chrome/Default/Cache", .browserCache),
+            ("~/Library/Application Support/Google/Chrome/Default/Code Cache", .browserCache),
+            ("~/Library/Application Support/Google/Chrome/Default/GPUCache", .browserCache),
             ("~/Library/Caches/Microsoft Edge", .browserCache),
             ("~/Library/Application Support/Microsoft Edge/Default/Cache", .browserCache),
+            ("~/Library/Application Support/Microsoft Edge/Default/Code Cache", .browserCache),
             ("~/Library/Caches/Firefox", .browserCache),
-            ("~/Library/Application Support/Firefox/Profiles", .browserCache),
+            ("~/Library/Application Support/Firefox/Profiles/*/cache2", .browserCache),
             ("~/Library/Caches/org.mozilla.firefox", .browserCache),
         ]
     }
@@ -55,8 +59,127 @@ public enum CachePaths {
         systemCachePaths + appCachePaths + browserCachePaths + devCachePaths
     }
     
+    public static let browserProtectedPatterns: [String] = [
+        "Bookmarks",
+        "Bookmarks.bak",
+        "Login Data",
+        "Login Data-journal",
+        "Web Data",
+        "Web Data-journal",
+        "Cookies",
+        "Cookies-journal",
+        "Extensions",
+        "Extension Rules",
+        "Extension State",
+        "Extension Scripts",
+        "Preferences",
+        "Secure Preferences",
+        "History",
+        "History-journal",
+        "Favicons",
+        "Favicons-journal",
+        "Top Sites",
+        "Visited Links",
+        "places.sqlite",
+        "places.sqlite-wal",
+        "places.sqlite-shm",
+        "logins.json",
+        "key4.db",
+        "key3.db",
+        "cert9.db",
+        "permissions.sqlite",
+        "formhistory.sqlite",
+        "storage/default/*/idb",
+        "*.sqlite",
+        "*.db",
+        "user.js",
+        "prefs.js",
+    ]
+    
+    public static let browserProtectedDirectories: [String] = [
+        "Extensions",
+        "Extension State",
+        "Extension Rules",
+        "Extension Scripts",
+        "Storage",
+        "databases",
+        "IndexedDB",
+        "File System",
+        "Session Storage",
+        "Local Extension Settings",
+    ]
+    
+    public static func isProtectedBrowserFile(_ path: String) -> Bool {
+        let filename = URL(fileURLWithPath: path).lastPathComponent
+        
+        for pattern in browserProtectedPatterns {
+            if pattern.hasSuffix("*") {
+                let prefix = String(pattern.dropLast())
+                if filename.hasPrefix(prefix) { return true }
+            } else if filename == pattern {
+                return true
+            }
+        }
+        
+        let pathLower = path.lowercased()
+        let protectedKeywords = [
+            "/extensions/",
+            "/extension state/",
+            "/extension rules/",
+            "/storage/default/",
+            "/indexeddb/",
+            "places.sqlite",
+            "logins.json",
+            "key4.db",
+            "key3.db",
+        ]
+        
+        for keyword in protectedKeywords {
+            if pathLower.contains(keyword) { return true }
+        }
+        
+        return false
+    }
+    
     public static func expandedPath(_ path: String) -> URL {
-        URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
+        if path.contains("*") {
+            let expanded = NSString(string: path).expandingTildeInPath
+            return URL(fileURLWithPath: expanded)
+        }
+        return URL(fileURLWithPath: NSString(string: path).expandingTildeInPath)
+    }
+    
+    public static func expandWildcardPath(_ path: String) -> [URL] {
+        guard path.contains("*") else {
+            let url = expandedPath(path)
+            return FileManager.default.fileExists(atPath: url.path) ? [url] : []
+        }
+        
+        let expanded = NSString(string: path).expandingTildeInPath
+        let parts = expanded.components(separatedBy: "*")
+        
+        guard parts.count >= 2 else { return [] }
+        
+        let basePath = parts[0]
+        let suffix = parts.count > 1 ? parts[1] : ""
+        
+        let fileManager = FileManager.default
+        guard let enumerator = fileManager.enumerator(
+            at: URL(fileURLWithPath: basePath),
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+        
+        var results: [URL] = []
+        
+        for case let url as URL in enumerator {
+            let fullPath = url.path
+            if fullPath.hasSuffix(suffix) || (suffix.isEmpty && fullPath.hasPrefix(basePath)) {
+                results.append(url)
+            }
+        }
+        
+        return results
     }
 }
 

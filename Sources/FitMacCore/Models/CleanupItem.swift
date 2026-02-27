@@ -18,13 +18,15 @@ public struct CleanupItem: Identifiable, Codable, Hashable {
     public var size: Int64
     public let isDirectory: Bool
     public let modifiedDate: Date?
+    public let subItems: [CleanupItem]?
     
     public init(
         path: URL,
         category: CacheCategory,
         size: Int64 = 0,
         isDirectory: Bool = false,
-        modifiedDate: Date? = nil
+        modifiedDate: Date? = nil,
+        subItems: [CleanupItem]? = nil
     ) {
         self.id = UUID()
         self.path = path
@@ -32,6 +34,7 @@ public struct CleanupItem: Identifiable, Codable, Hashable {
         self.size = size
         self.isDirectory = isDirectory
         self.modifiedDate = modifiedDate
+        self.subItems = subItems
     }
 }
 
