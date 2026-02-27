@@ -5,6 +5,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case home = "Home"
     case cache = "Cache"
     case systemJunk = "System Junk"
+    case systemApps = "System Apps"
     case trash = "Trash"
     case language = "Language"
     case iTunes = "iTunes"
@@ -21,6 +22,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .home: return "externaldrive.fill"
         case .cache: return "trash.circle.fill"
         case .systemJunk: return "gearshape.fill"
+        case .systemApps: return "app.badge.minus"
         case .trash: return "trash"
         case .language: return "globe"
         case .iTunes: return "music.note"
@@ -54,6 +56,8 @@ struct ContentView: View {
                 CacheView()
             case .systemJunk:
                 SystemJunkView()
+            case .systemApps:
+                SystemAppView()
             case .trash:
                 TrashView()
             case .language:
