@@ -162,12 +162,22 @@ public actor SystemJunkScanner {
     private func scanDocumentVersions() async -> [SystemJunkItem] {
         var items: [SystemJunkItem] = []
         let fileManager = FileManager.default
+        let homeDir = fileManager.homeDirectoryForCurrentUser
         
-        let autosavePath = fileManager.homeDirectoryForCurrentUser
+        let autosavePath = homeDir
             .appendingPathComponent("Library")
             .appendingPathComponent("Autosave Information")
         
         if let item = await scanPath(autosavePath, category: .documentVersions, description: "Auto-saved document versions") {
+            items.append(item)
+        }
+        
+        let sharedFileListPath = homeDir
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Application Support")
+            .appendingPathComponent("com.apple.sharedfilelist")
+        
+        if let item = await scanPath(sharedFileListPath, category: .documentVersions, description: "Shared file list cache") {
             items.append(item)
         }
         
@@ -208,7 +218,161 @@ public actor SystemJunkScanner {
             ))
         }
         
+        if let orphanedPlists = await scanOrphanedPlists() {
+            items.append(orphanedPlists)
+        }
+        
+        if let spotlightIndex = await scanSpotlightIndexResidue() {
+            items.append(spotlightIndex)
+        }
+        
         return items
+    }
+    
+    private func scanOrphanedPlists() async -> SystemJunkItem? {
+        let fileManager = FileManager.default
+        let prefsPath = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Preferences")
+        
+        guard fileManager.fileExists(atPath: prefsPath.path) else { return nil }
+        
+        let installedBundleIDs = getInstalledAppBundleIDs()
+        
+        var orphanedPlists: [URL] = []
+        var totalSize: Int64 = 0
+        
+        guard let contents = try? fileManager.contentsOfDirectory(
+            at: prefsPath,
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+        
+        for fileURL in contents {
+            let filename = fileURL.lastPathComponent
+            
+            guard filename.hasSuffix(".plist") else { continue }
+            guard !filename.hasSuffix(".lockfile") else { continue }
+            
+            let bundleID = String(filename.dropLast(6))
+            
+            if !isSystemPlist(bundleID: bundleID) && !installedBundleIDs.contains(bundleID) {
+                do {
+                    let resourceValues = try fileURL.resourceValues(forKeys: [.fileSizeKey])
+                    if let fileSize = resourceValues.fileSize, fileSize > 0 {
+                        orphanedPlists.append(fileURL)
+                        totalSize += Int64(fileSize)
+                    }
+                } catch {
+                    continue
+                }
+            }
+        }
+        
+        guard !orphanedPlists.isEmpty else { return nil }
+        
+        let virtualPath = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Preferences")
+            .appendingPathComponent(".OrphanedPlists")
+        
+        return SystemJunkItem(
+            path: virtualPath,
+            category: .systemLeftovers,
+            size: totalSize,
+            isDirectory: false,
+            description: "\(orphanedPlists.count) orphaned preference files",
+            subItemPaths: orphanedPlists
+        )
+    }
+    
+    private func getInstalledAppBundleIDs() -> Set<String> {
+        var bundleIDs = Set<String>()
+        let fileManager = FileManager.default
+        
+        let appDirectories = [
+            "/Applications",
+            "/System/Applications",
+            fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Applications").path
+        ]
+        
+        for appDir in appDirectories {
+            guard let contents = try? fileManager.contentsOfDirectory(
+                at: URL(fileURLWithPath: appDir),
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+            
+            for appURL in contents where appURL.pathExtension == "app" {
+                let bundle = Bundle(url: appURL)
+                if let bundleID = bundle?.bundleIdentifier {
+                    bundleIDs.insert(bundleID)
+                }
+            }
+        }
+        
+        return bundleIDs
+    }
+    
+    private func isSystemPlist(bundleID: String) -> Bool {
+        let systemPrefixes = [
+            "com.apple.",
+            "loginwindow.",
+            "com.google.Chrome.",
+            "org.mozilla.firefox.",
+            "com.microsoft.edgemac.",
+            "global."
+        ]
+        
+        for prefix in systemPrefixes {
+            if bundleID.hasPrefix(prefix) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    private func scanSpotlightIndexResidue() async -> SystemJunkItem? {
+        let fileManager = FileManager.default
+        
+        let spotlightPaths = [
+            "/.Spotlight-V100",
+            "/.Spotlight-V100-2"
+        ]
+        
+        var residueFiles: [URL] = []
+        var totalSize: Int64 = 0
+        
+        for pathString in spotlightPaths {
+            let url = URL(fileURLWithPath: pathString)
+            
+            var isDirectory: ObjCBool = false
+            if fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                do {
+                    let size = try FileUtils.sizeOfItem(at: url)
+                    if size > 0 {
+                        residueFiles.append(url)
+                        totalSize += size
+                    }
+                } catch {
+                    continue
+                }
+            }
+        }
+        
+        guard !residueFiles.isEmpty else { return nil }
+        
+        let virtualPath = URL(fileURLWithPath: "/.Spotlight_Index_Residue")
+        
+        return SystemJunkItem(
+            path: virtualPath,
+            category: .systemLeftovers,
+            size: totalSize,
+            isDirectory: true,
+            description: "Spotlight index residue (usually on external drives)",
+            subItemPaths: residueFiles
+        )
     }
     
     private func findDSStoreFiles(in directory: URL) async -> (paths: [URL], totalSize: Int64)? {
