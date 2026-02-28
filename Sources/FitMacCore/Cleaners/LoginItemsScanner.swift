@@ -1,5 +1,4 @@
 import Foundation
-import ServiceManagement
 
 public struct LoginItem: Identifiable, Codable, Hashable {
     public let id: UUID
@@ -190,42 +189,18 @@ public actor LoginItemsScanner {
     private func scanLoginItems() async -> [LoginItem] {
         var items: [LoginItem] = []
         
-        if #available(macOS 13, *) {
-            let loginItems = SMAppService.loginItems
-            for item in loginItems {
-                if let loginItem = createLoginItem(from: item) {
-                    items.append(loginItem)
-                }
-            }
+        let autoLaunchedPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/com.apple.backgroundtaskmanagementagent/Downloads.plist")
+        if let autoItems = parseAutoLaunchedItems(at: autoLaunchedPath) {
+            items.append(contentsOf: autoItems)
         }
         
-        let loginItemsPath = URL(fileURLWithPath: "/Library/Application Support/com.apple.backgroundtaskmanagementagent/Downloads.plist")
-        if let legacyItems = parseLegacyLoginItems(at: loginItemsPath) {
-            items.append(contentsOf: legacyItems)
-        }
+        items.append(contentsOf: scanSharedFileListItems())
         
         return items
     }
     
-    @available(macOS 13, *)
-    private func createLoginItem(from service: SMAppService) -> LoginItem? {
-        let name = service.bundle?.bundleIdentifier ?? "Unknown"
-        
-        return LoginItem(
-            name: URL(fileURLWithPath: name).deletingPathExtension().lastPathComponent,
-            label: name,
-            path: service.bundle?.bundleURL ?? URL(fileURLWithPath: "/"),
-            programPath: service.bundle?.executableURL?.path,
-            arguments: [],
-            runAtLoad: true,
-            isEnabled: service.status == .enabled,
-            itemType: .loginItem,
-            isSystemItem: false,
-            bundleIdentifier: service.bundle?.bundleIdentifier
-        )
-    }
-    
-    private func parseLegacyLoginItems(at path: URL) -> [LoginItem]? {
+    private func parseAutoLaunchedItems(at path: URL) -> [LoginItem]? {
         guard let data = try? Data(contentsOf: path),
               let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
               let items = plist["items"] as? [[String: Any]] else {
@@ -233,16 +208,22 @@ public actor LoginItemsScanner {
         }
         
         return items.compactMap { itemDict -> LoginItem? in
-            guard let name = itemDict["Name"] as? String,
-                  let url = itemDict["URL"] as? URL ?? (itemDict["URLString"] as? String).flatMap({ URL(string: $0) }) else {
-                return nil
+            guard let name = itemDict["Name"] as? String else { return nil }
+            
+            var url: URL?
+            if let urlPath = itemDict["URL"] as? URL {
+                url = urlPath
+            } else if let urlString = itemDict["URLString"] as? String {
+                url = URL(string: urlString)
             }
+            
+            guard let itemURL = url else { return nil }
             
             return LoginItem(
                 name: name,
                 label: name,
-                path: url,
-                programPath: url.path,
+                path: itemURL,
+                programPath: itemURL.path,
                 arguments: [],
                 runAtLoad: true,
                 isEnabled: !(itemDict["Disabled"] as? Bool ?? false),
@@ -251,63 +232,27 @@ public actor LoginItemsScanner {
             )
         }
     }
+    
+    private func scanSharedFileListItems() -> [LoginItem] {
+        var items: [LoginItem] = []
+        
+        let sflPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.apple.loginitems.sfl")
+        
+        guard FileManager.default.fileExists(atPath: sflPath.path) else { return items }
+        
+        return items
+    }
 }
 
 public actor LoginItemsManager {
     public init() {}
     
     public func toggle(item: LoginItem, enable: Bool) async -> LoginItemToggleResult {
-        if item.itemType == .loginItem {
-            return await toggleLoginItem(item: item, enable: enable)
-        } else {
-            return await toggleLaunchAgent(item: item, enable: enable)
-        }
+        return await toggleLaunchItem(item: item, enable: enable)
     }
     
-    @available(macOS 13, *)
-    private func toggleLoginItem(item: LoginItem, enable: Bool) async -> LoginItemToggleResult {
-        guard let bundleId = item.bundleIdentifier else {
-            return LoginItemToggleResult(item: item, success: false, error: "No bundle identifier")
-        }
-        
-        let service = SMAppService.loginItem(identifier: bundleId)
-        
-        do {
-            if enable {
-                try service.register()
-            } else {
-                try service.unregister()
-            }
-            return LoginItemToggleResult(item: item, success: true)
-        } catch {
-            return LoginItemToggleResult(item: item, success: false, error: error.localizedDescription)
-        }
-    }
-    
-    private func toggleLoginItem(item: LoginItem, enable: Bool) async -> LoginItemToggleResult {
-        if #available(macOS 13, *) {
-            guard let bundleId = item.bundleIdentifier else {
-                return LoginItemToggleResult(item: item, success: false, error: "No bundle identifier")
-            }
-            
-            let service = SMAppService.loginItem(identifier: bundleId)
-            
-            do {
-                if enable {
-                    try service.register()
-                } else {
-                    try service.unregister()
-                }
-                return LoginItemToggleResult(item: item, success: true)
-            } catch {
-                return LoginItemToggleResult(item: item, success: false, error: error.localizedDescription)
-            }
-        } else {
-            return toggleLaunchAgent(item: item, enable: enable)
-        }
-    }
-    
-    private func toggleLaunchAgent(item: LoginItem, enable: Bool) async -> LoginItemToggleResult {
+    private func toggleLaunchItem(item: LoginItem, enable: Bool) async -> LoginItemToggleResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
         

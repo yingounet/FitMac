@@ -11,6 +11,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case iTunes = "iTunes"
     case mail = "Mail"
     case homebrew = "Homebrew"
+    case loginItems = "Login Items"
     case duplicates = "Duplicates"
     case largeFiles = "Large Files"
     case uninstall = "Uninstall"
@@ -30,6 +31,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .iTunes: return "music.note"
         case .mail: return "envelope.fill"
         case .homebrew: return "mug.fill"
+        case .loginItems: return "list.bullet.rectangle"
         case .duplicates: return "doc.on.doc.fill"
         case .largeFiles: return "doc.fill"
         case .uninstall: return "xmark.bin.fill"
@@ -72,6 +74,8 @@ struct ContentView: View {
                 MailAttachmentsView()
             case .homebrew:
                 HomebrewView()
+            case .loginItems:
+                LoginItemsView()
             case .duplicates:
                 DuplicatesView()
             case .largeFiles:
