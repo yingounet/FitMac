@@ -88,41 +88,18 @@ struct LoginItemsView: View {
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning login items...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        ScanningStateView(message: "Scanning login items...")
     }
     
     private var initialStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "list.bullet.rectangle")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Click Scan to check login items")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "list.bullet.rectangle",
+            title: "Click Scan to check login items"
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("No login items found")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        NoResultStateView()
     }
     
     private func contentView(_ result: LoginItemsScanResult) -> some View {
@@ -204,15 +181,7 @@ struct LoginItemsView: View {
     }
     
     private func errorView(_ error: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(error)
-                .foregroundStyle(.red)
-        }
-        .padding()
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        ErrorStateView(message: error)
     }
 }
 

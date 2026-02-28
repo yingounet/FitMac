@@ -86,57 +86,28 @@ struct DuplicatesView: View {
             .tint(viewModel.isScanning ? .red : .blue)
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
+        .background(.primary.opacity(0.05))
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning for duplicate files...")
-                .foregroundStyle(.secondary)
-            Text("\(viewModel.scannedCount) files scanned")
-                .font(.headline)
-                .foregroundStyle(.blue)
-            Text("Path: \(PathUtils.shorten(viewModel.scanPath.path))")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ScanningStateView(
+            message: "Scanning for duplicate files...",
+            itemCount: viewModel.scannedCount
+        )
     }
     
     private var initialScanView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "doc.on.doc.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            Text("Find Duplicate Files")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("Scan your files to find duplicates")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-            Button("Start Scan") {
-                viewModel.scan()
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyStateView(
+            icon: "doc.on.doc.fill",
+            title: "Find Duplicate Files",
+            description: "Scan your files to find duplicates",
+            actionTitle: "Start Scan",
+            action: { viewModel.scan() }
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.green)
-            Text("No Duplicates Found")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("All scanned files are unique")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        NoResultStateView()
     }
     
     private func duplicatesListView(_ result: DuplicatesScanResult) -> some View {

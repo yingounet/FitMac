@@ -113,58 +113,28 @@ struct HomebrewView: View {
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning Homebrew cache...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        ScanningStateView(message: "Scanning Homebrew cache...")
     }
     
     private var initialStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "mug.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Click Scan to check Homebrew cache")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "mug.fill",
+            title: "Click Scan to check Homebrew cache"
+        )
     }
     
     private var notInstalledView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "mug")
-                .font(.system(size: 48))
-                .foregroundStyle(.orange)
-            Text("Homebrew Not Installed")
-                .font(.headline)
-            Text("Install Homebrew from brew.sh to use this feature")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Link("Visit brew.sh", destination: URL(string: "https://brew.sh")!)
-                .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "mug",
+            title: "Homebrew Not Installed",
+            description: "Install Homebrew from brew.sh to use this feature",
+            actionTitle: "Visit brew.sh",
+            action: { NSWorkspace.shared.open(URL(string: "https://brew.sh")!) }
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("Homebrew cache is clean")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        NoResultStateView()
     }
     
     private func contentView(_ result: HomebrewScanResult) -> some View {
@@ -269,15 +239,7 @@ struct HomebrewView: View {
     }
     
     private func errorView(_ error: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(error)
-                .foregroundStyle(.red)
-        }
-        .padding()
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        ErrorStateView(message: error)
     }
 }
 

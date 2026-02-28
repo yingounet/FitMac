@@ -81,41 +81,21 @@ struct TrashView: View {
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning trash bins...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        ScanningStateView(message: "Scanning trash bins...")
     }
     
     private var initialStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "trash")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Click Scan to check trash bins")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "trash",
+            title: "Click Scan to check trash bins"
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("All trash bins are empty")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "checkmark.circle.fill",
+            title: "All trash bins are empty"
+        )
     }
     
     private func contentView(_ result: TrashScanResult) -> some View {
@@ -176,15 +156,7 @@ struct TrashView: View {
     }
     
     private func errorView(_ error: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(error)
-                .foregroundStyle(.red)
-        }
-        .padding()
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        ErrorStateView(message: error)
     }
 }
 

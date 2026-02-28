@@ -65,15 +65,10 @@ struct UninstallView: View {
     }
     
     private var emptyDetailView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "app")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            Text("Select an app to scan for leftovers")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyStateView(
+            icon: "app",
+            title: "Select an app to scan for leftovers"
+        )
     }
     
     private func appDetailView(_ app: AppInfo) -> some View {
@@ -140,32 +135,15 @@ struct UninstallView: View {
             .disabled(viewModel.isScanningLeftovers)
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
+        .background(.primary.opacity(0.05))
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning for leftover files...")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ScanningStateView(message: "Scanning for leftover files...")
     }
     
     private var noLeftoversView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("No leftovers found")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("This app appears to be clean")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        NoResultStateView()
     }
     
     private var leftoversListView: some View {

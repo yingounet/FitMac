@@ -81,46 +81,19 @@ struct iTunesView: View {
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning iTunes junk...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        ScanningStateView(message: "Scanning iTunes junk...")
     }
     
     private var initialStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "music.note")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Click Scan to find iTunes junk")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text("iOS backups, podcast downloads, and old mobile apps")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "music.note",
+            title: "Click Scan to find iTunes junk",
+            description: "iOS backups, podcast downloads, and old mobile apps"
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("No iTunes junk found")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        NoResultStateView()
     }
     
     private func contentView(_ result: iTunesJunkScanResult) -> some View {
@@ -190,20 +163,12 @@ struct iTunesView: View {
                 .fontWeight(.semibold)
         }
         .padding()
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(.primary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: FitMacSpacing.md))
     }
     
     private func errorView(_ error: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(error)
-                .foregroundStyle(.red)
-        }
-        .padding()
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        ErrorStateView(message: error)
     }
 }
 

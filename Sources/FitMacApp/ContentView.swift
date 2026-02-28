@@ -25,7 +25,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .home: return "externaldrive.fill"
         case .cache: return "trash.circle.fill"
         case .systemJunk: return "gearshape.fill"
-        case .systemApps: return "app.badge.minus"
+        case .systemApps: return "app.dashed"
         case .trash: return "trash"
         case .language: return "globe"
         case .iTunes: return "music.note"

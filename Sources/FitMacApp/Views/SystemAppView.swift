@@ -39,50 +39,25 @@ struct SystemAppView: View {
     }
     
     private var initialView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "app.badge.checkmark")
-                .font(.system(size: 64))
-                .foregroundStyle(.blue)
-            Text("Scan System Apps")
-                .font(.title2)
-            Text("Find system apps that can be safely removed to free up space")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Start Scan") {
-                viewModel.scan()
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        EmptyStateView(
+            icon: "app.badge.checkmark",
+            title: "Scan System Apps",
+            description: "Find system apps that can be safely removed to free up space",
+            actionTitle: "Start Scan",
+            action: { viewModel.scan() }
+        )
     }
     
     private var scanningView: some View {
-        VStack(spacing: 20) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning system apps...")
-                .font(.headline)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        ScanningStateView(message: "Scanning system apps...")
     }
     
     private var emptyView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.green)
-            Text("No Removable Apps Found")
-                .font(.title2)
-            Text("All system apps are either essential or already removed")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        EmptyStateView(
+            icon: "checkmark.circle.fill",
+            title: "No Removable Apps Found",
+            description: "All system apps are either essential or already removed"
+        )
     }
     
     private func resultsView(_ result: SystemAppScanResult) -> some View {

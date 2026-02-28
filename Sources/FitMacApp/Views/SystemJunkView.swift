@@ -105,46 +105,19 @@ struct SystemJunkView: View {
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning system junk...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        ScanningStateView(message: "Scanning system junk...")
     }
     
     private var initialStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Click Scan to find system junk")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text("Temporary files, broken downloads, document versions, and system leftovers")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "gearshape.fill",
+            title: "Click Scan to find system junk",
+            description: "Temporary files, broken downloads, document versions, and system leftovers"
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("No system junk found")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        NoResultStateView()
     }
     
     private func contentView(_ result: SystemJunkScanResult) -> some View {
@@ -214,20 +187,12 @@ struct SystemJunkView: View {
                 .fontWeight(.semibold)
         }
         .padding()
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(.primary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: FitMacSpacing.md))
     }
     
     private func errorView(_ error: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(error)
-                .foregroundStyle(.red)
-        }
-        .padding()
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        ErrorStateView(message: error)
     }
 }
 

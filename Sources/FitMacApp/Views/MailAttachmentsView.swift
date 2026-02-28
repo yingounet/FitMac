@@ -88,49 +88,19 @@ struct MailAttachmentsView: View {
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning mail attachments...")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        ScanningStateView(message: "Scanning mail attachments...")
     }
     
     private var initialStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "envelope.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Click Scan to find large mail attachments")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text("Scan Mail.app for large attachments that can be safely removed")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            icon: "envelope.fill",
+            title: "Click Scan to find large mail attachments",
+            description: "Scan Mail.app for large attachments that can be safely removed"
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("No large mail attachments found")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text("All attachments are smaller than \(SizeFormatter.format(viewModel.minSizeKB * 1024))")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        NoResultStateView()
     }
     
     private func contentView(_ result: MailScanResult) -> some View {
@@ -192,20 +162,12 @@ struct MailAttachmentsView: View {
                 .fontWeight(.semibold)
         }
         .padding()
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(.primary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: FitMacSpacing.md))
     }
     
     private func errorView(_ error: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(error)
-                .foregroundStyle(.red)
-        }
-        .padding()
-        .background(Color.red.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        ErrorStateView(message: error)
     }
 }
 

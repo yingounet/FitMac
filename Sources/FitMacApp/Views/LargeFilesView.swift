@@ -95,38 +95,22 @@ struct LargeFilesView: View {
             .tint(viewModel.isScanning ? .red : .blue)
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
+        .background(.primary.opacity(0.05))
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning for large files...")
-                .foregroundStyle(.secondary)
-            Text("\(viewModel.scannedCount) files scanned")
-                .font(.headline)
-                .foregroundStyle(.blue)
-            Text("Path: \(PathUtils.shorten(viewModel.scanPath.path))")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ScanningStateView(
+            message: "Scanning for large files...",
+            itemCount: viewModel.scannedCount
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "doc")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            Text("No large files found")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("Try adjusting the minimum size filter")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyStateView(
+            icon: "doc",
+            title: "No large files found",
+            description: "Try adjusting the minimum size filter"
+        )
     }
     
     private var filesListView: some View {

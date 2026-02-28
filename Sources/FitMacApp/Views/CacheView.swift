@@ -110,37 +110,22 @@ struct CacheView: View {
             }
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
+        .background(.primary.opacity(0.05))
     }
     
     private var scanningView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Scanning cache files...")
-                .foregroundStyle(.secondary)
-            if viewModel.scannedCount > 0 {
-                Text("\(viewModel.scannedCount) locations found")
-                    .font(.headline)
-                    .foregroundStyle(.blue)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ScanningStateView(
+            message: "Scanning cache files...",
+            itemCount: viewModel.scannedCount
+        )
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "trash.circle")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            Text("Click Scan to find cache files")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("Select categories from the menu and scan for cache files")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyStateView(
+            icon: "trash.circle",
+            title: "Click Scan to find cache files",
+            description: "Select categories from the menu and scan for cache files"
+        )
     }
     
     private func resultsView(_ result: ScanResult) -> some View {

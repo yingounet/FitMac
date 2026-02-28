@@ -51,8 +51,8 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
             .padding()
-            .background(Color.orange.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(Color.orange.opacity(0.15))
+            .clipShape(RoundedRectangle(cornerRadius: FitMacSpacing.md))
         }
         .buttonStyle(.plain)
     }
@@ -231,8 +231,8 @@ struct QuickActionCard: View {
                     .foregroundStyle(.tertiary)
             }
             .padding()
-            .background(Color.gray.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(.primary.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: FitMacSpacing.md))
         }
         .buttonStyle(.plain)
     }

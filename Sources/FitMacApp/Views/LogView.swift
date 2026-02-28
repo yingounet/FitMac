@@ -53,32 +53,19 @@ struct LogView: View {
             .buttonStyle(.bordered)
         }
         .padding()
-        .background(Color.gray.opacity(0.05))
+        .background(.primary.opacity(0.05))
     }
     
     private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Loading history...")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ScanningStateView(message: "Loading history...")
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            Text("No cleanup history")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("Cleanup operations will be logged here")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyStateView(
+            icon: "clock.arrow.circlepath",
+            title: "No cleanup history",
+            description: "Cleanup operations will be logged here"
+        )
     }
     
     private var logsListView: some View {

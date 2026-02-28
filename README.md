@@ -1,128 +1,157 @@
 # FitMac
 
-**Make Your Mac Fit Again!** 
+**让你的 Mac 更 Fit、更干净、更高效**
 
-An open-source, free, and secure Mac cleaning tool with both GUI (SwiftUI) and CLI support. Similar to CleanMyMac / OnyX, but completely open source (MIT License).
+一个**开源、免费、安全、可审计**的 Mac 清理工具，支持 GUI（SwiftUI）+ CLI 双模式。
 
-## Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos)
 
-### MVP (Current)
+## 特性
 
-- **Disk Status** - View disk usage and available space
-- **Cache Cleaner** - Scan and clean system/application/browser/developer caches
-- **Large Files Finder** - Find large files taking up space
-- **App Uninstaller** - Find and remove app leftovers
+### 核心功能
 
-### Safety Features
+- **磁盘状态** - 实时显示磁盘容量和使用率
+- **缓存清理** - 智能清理系统、应用、浏览器、开发工具缓存
+- **垃圾桶管理** - 统一管理所有磁盘的垃圾桶
+- **语言文件** - 删除多余的语言包，节省空间
+- **系统垃圾** - 清理临时文件、文档版本、系统残留
+- **系统应用** - 安全移除内置应用（GarageBand、iMovie 等）
+- **iTunes 垃圾** - 清理 iOS 备份和旧播客下载
+- **邮件附件** - 管理邮件中的大附件
+- **重复文件** - 基于 hash 查找重复文件
+- **Homebrew 集成** - 清理 Homebrew 缓存和旧版本
+- **启动项管理** - 管理登录项和 LaunchAgents
+- **大文件查找** - 按大小/日期扫描大文件
+- **应用卸载** - 完整卸载应用及其残留
+- **清理历史** - 查看所有清理操作记录
 
-- Dry-run mode by default (preview changes before applying)
-- All deletions go to Trash (recoverable)
-- Transparent file paths
-- No network connections (except optional updates)
+### 安全特性
 
-## Installation
+- **Dry-run 默认开启** - 预览所有更改再执行
+- **废纸篓删除** - 所有文件移到废纸篓，可恢复
+- **路径透明** - 显示每个文件的完整路径和大小
+- **浏览器保护** - 自动保护书签、密码、扩展数据
+- **无网络连接** - 除可选更新外，不发送任何数据
 
-### From Source
+## 安装
+
+### 从源码构建
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/yingounet/FitMac.git
 cd FitMac
 
-# Build
+# 构建 CLI
 swift build -c release
 
-# The binary will be at .build/release/fitmac
-# You can copy it to your PATH
-cp .build/release/fitmac /usr/local/bin/
+# 安装到 /usr/local/bin
+sudo cp .build/release/fitmac /usr/local/bin/
 ```
 
-## Usage
-
-### Show Disk Status
+### 构建 GUI 应用
 
 ```bash
+# 使用 Xcode 打开
+open Package.swift
+
+# 或使用命令行构建
+swift build -c release --product FitMacApp
+```
+
+## 快速开始
+
+### CLI 使用
+
+```bash
+# 查看磁盘状态
 fitmac status
-```
 
-### Cache Management
-
-```bash
-# Scan all caches
+# 扫描所有缓存
 fitmac cache --scan
 
-# Scan specific category
-fitmac cache --scan --category browser
-fitmac cache --scan --category dev
-
-# Clean caches (dry-run by default)
+# 清理缓存（默认 dry-run）
 fitmac cache --clean
 
-# Actually delete files
+# 实际执行清理
 fitmac cache --clean --no-dry-run
-```
 
-### Find Large Files
+# 查找大文件
+fitmac large --min 500MB
 
-```bash
-# Find files larger than 100MB in home directory
-fitmac large
-
-# Find files larger than 500MB in Downloads
-fitmac large --path ~/Downloads --min 500MB
-
-# Limit results
-fitmac large --limit 10
-```
-
-### Find App Leftovers
-
-```bash
-# Search for app leftovers
-fitmac uninstall "AppName"
-
-# Clean leftovers (dry-run by default)
+# 卸载应用
 fitmac uninstall "AppName" --clean
 
-# Actually delete
-fitmac uninstall "AppName" --clean --no-dry-run
+# 查看清理历史
+fitmac log --list
 ```
 
-## Requirements
+### GUI 使用
 
-- macOS 13 Ventura or later (for GUI)
-- macOS 11 Big Sur or later (for CLI)
-- Xcode 15+ (for building from source)
+运行 FitMacApp 后，左侧导航栏提供所有功能入口：
 
-## Project Structure
+1. **Home** - 磁盘状态概览和快捷操作
+2. **清理类** - Cache, System Junk, Trash, Language, iTunes, Mail, Homebrew
+3. **文件管理** - Large Files, Duplicates
+4. **系统管理** - System Apps, Login Items, Uninstall
+5. **其他** - History（清理历史）, Permissions（权限设置）
+
+## 项目结构
 
 ```
 FitMac/
 ├── Sources/
-│   ├── FitMacCore/       # Core library (shared by CLI and GUI)
-│   │   ├── Cleaners/     # Scanner and cleaner logic
-│   │   ├── Models/       # Data models
-│   │   └── Utils/        # Utilities
-│   ├── FitMacCLI/        # Command-line interface
-│   └── FitMacApp/        # SwiftUI application (coming soon)
+│   ├── FitMacCore/           # 核心库 (CLI + GUI 共用)
+│   │   ├── Cleaners/         # 扫描器和清理器
+│   │   ├── Models/           # 数据模型
+│   │   └── Utils/            # 工具类
+│   ├── FitMacCLI/            # 命令行工具
+│   │   ├── FitMacCLI.swift   # 入口
+│   │   └── *Command.swift    # 各命令实现
+│   └── FitMacApp/            # SwiftUI 应用
+│       ├── Views/            # 视图层
+│       ├── ViewModels/       # 视图模型
+│       └── Utils/            # App 工具
 ├── Tests/
-│   └── FitMacCoreTests/  # Unit tests
+│   └── FitMacCoreTests/      # 单元测试
+├── __docs/                   # 文档
 └── Package.swift
 ```
 
-## Contributing
+## 系统要求
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- **GUI**: macOS 13 Ventura 或更高版本
+- **CLI**: macOS 12 Monterey 或更高版本
+- **构建**: Xcode 15+ / Swift 5.9+
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## 文档
 
-## License
+完整文档请查看 [`__docs/`](__docs/README.md) 目录：
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- [CLI 使用指南](__docs/cli/README.md)
+- [功能模块文档](__docs/modules/README.md)
+- [架构设计](__docs/architecture/overview.md)
+- [贡献指南](__docs/development/contributing.md)
 
+## 贡献
+
+欢迎 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'Add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
+
+## 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+## 致谢
+
+灵感来源于 CleanMyMac、OnyX、Pearcleaner 等优秀的 Mac 清理工具。
+
+---
 
 **FitMac — Make Your Mac Fit Again!**
