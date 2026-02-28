@@ -161,3 +161,60 @@ public struct DiskStatus: Codable {
         self.volumeName = volumeName
     }
 }
+
+public struct DuplicateFile: Identifiable, Codable, Hashable {
+    public let id: UUID
+    public let path: URL
+    public let size: Int64
+    public let hash: String
+    public let modifiedDate: Date?
+    public let fileType: String
+    
+    public init(path: URL, size: Int64, hash: String, modifiedDate: Date?, fileType: String) {
+        self.id = UUID()
+        self.path = path
+        self.size = size
+        self.hash = hash
+        self.modifiedDate = modifiedDate
+        self.fileType = fileType
+    }
+}
+
+public struct DuplicateGroup: Identifiable, Codable, Hashable {
+    public let id: UUID
+    public let files: [DuplicateFile]
+    public let fileSize: Int64
+    public let hash: String
+    
+    public init(files: [DuplicateFile], hash: String) {
+        self.id = UUID()
+        self.files = files
+        self.fileSize = files.first?.size ?? 0
+        self.hash = hash
+    }
+    
+    public var wastage: Int64 {
+        guard files.count > 1 else { return 0 }
+        return fileSize * Int64(files.count - 1)
+    }
+    
+    public var totalSize: Int64 {
+        fileSize * Int64(files.count)
+    }
+}
+
+public struct DuplicatesScanResult: Codable {
+    public let groups: [DuplicateGroup]
+    public let totalFiles: Int
+    public let totalWastage: Int64
+    public let scanDate: Date
+    public let scannedPaths: [String]
+    
+    public init(groups: [DuplicateGroup], scannedPaths: [String], scanDate: Date = Date()) {
+        self.groups = groups
+        self.scannedPaths = scannedPaths
+        self.scanDate = scanDate
+        self.totalFiles = groups.reduce(0) { $0 + $1.files.count }
+        self.totalWastage = groups.reduce(0) { $0 + $1.wastage }
+    }
+}

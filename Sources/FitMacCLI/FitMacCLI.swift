@@ -20,7 +20,7 @@ struct FitMacCLI: AsyncParsableCommand {
               fitmac large --min 500MB         Find large files over 500MB
               fitmac uninstall "WeChat"        Find app leftovers
             """,
-        subcommands: [StatusCommand.self, CacheCommand.self, TrashCommand.self, LanguageCommand.self, SystemJunkCommand.self, SystemAppCommand.self, iTunesCommand.self, MailCommand.self, LargeCommand.self, UninstallCommand.self, LogCommand.self],
+        subcommands: [StatusCommand.self, CacheCommand.self, TrashCommand.self, LanguageCommand.self, SystemJunkCommand.self, SystemAppCommand.self, iTunesCommand.self, MailCommand.self, DuplicatesCommand.self, HomebrewCommand.self, LargeCommand.self, UninstallCommand.self, LogCommand.self],
         defaultSubcommand: StatusCommand.self
     )
 }
