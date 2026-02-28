@@ -10,7 +10,7 @@ public actor DuplicateScanner {
         maxFiles: Int = 10000,
         progress: @escaping (Int) -> Void = { _ in }
     ) async throws -> DuplicatesScanResult {
-        var hashToFiles: [String: [DuplicateFile]] = [:]
+        var sizeToFiles: [Int64: [DuplicateFile]] = [:]
         var scannedCount = 0
         let fileManager = FileManager.default
         
@@ -34,20 +34,42 @@ public actor DuplicateScanner {
                           let fileSize = resourceValues.fileSize,
                           Int64(fileSize) >= minSize else { continue }
                     
-                    let hash = try computeFileHash(at: fileURL)
                     let fileType = fileURL.pathExtension.lowercased()
+                    let size = Int64(fileSize)
                     
                     let dupFile = DuplicateFile(
                         path: fileURL,
-                        size: Int64(fileSize),
-                        hash: hash,
+                        size: size,
+                        hash: "",
                         modifiedDate: resourceValues.contentModificationDate,
                         fileType: fileType
                     )
                     
-                    hashToFiles[hash, default: []].append(dupFile)
+                    sizeToFiles[size, default: []].append(dupFile)
                     scannedCount += 1
                     progress(scannedCount)
+                } catch {
+                    continue
+                }
+            }
+        }
+        
+        var hashToFiles: [String: [DuplicateFile]] = [:]
+        
+        for (size, files) in sizeToFiles where files.count > 1 {
+            for file in files {
+                if Task.isCancelled { break }
+                
+                do {
+                    let hash = try computeFileHash(at: file.path, size: size)
+                    let dupFile = DuplicateFile(
+                        path: file.path,
+                        size: file.size,
+                        hash: hash,
+                        modifiedDate: file.modifiedDate,
+                        fileType: file.fileType
+                    )
+                    hashToFiles[hash, default: []].append(dupFile)
                 } catch {
                     continue
                 }
@@ -65,9 +87,38 @@ public actor DuplicateScanner {
         )
     }
     
-    private func computeFileHash(at url: URL) throws -> String {
-        let data = try Data(contentsOf: url)
-        let hash = Insecure.MD5.hash(data: data)
+    private func computeFileHash(at url: URL, size: Int64) throws -> String {
+        let fileHandle = try FileHandle(forReadingFrom: url)
+        defer { try? fileHandle.close() }
+        
+        let chunkSize: Int64 = 1024 * 1024
+        var hasher = Insecure.MD5()
+        
+        if size <= chunkSize * 3 {
+            if let data = try fileHandle.readToEnd() {
+                hasher.update(data: data)
+            }
+        } else {
+            if let headData = try fileHandle.read(upToCount: Int(chunkSize)) {
+                hasher.update(data: headData)
+            }
+            
+            try fileHandle.seek(toOffset: UInt64(size / 2))
+            if let middleData = try fileHandle.read(upToCount: Int(chunkSize)) {
+                hasher.update(data: middleData)
+            }
+            
+            try fileHandle.seek(toOffset: UInt64(size - chunkSize))
+            if let tailData = try fileHandle.read(upToCount: Int(chunkSize)) {
+                hasher.update(data: tailData)
+            }
+            
+            var sizeData = Data()
+            sizeData.append(contentsOf: withUnsafeBytes(of: size.littleEndian) { Array($0) })
+            hasher.update(data: sizeData)
+        }
+        
+        let hash = hasher.finalize()
         return hash.map { String(format: "%02hhx", $0) }.joined()
     }
 }

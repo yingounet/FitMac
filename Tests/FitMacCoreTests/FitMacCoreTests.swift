@@ -271,4 +271,125 @@ final class FitMacCoreTests: XCTestCase {
     func testPermissionUtilsHasFullDiskAccess() {
         let _ = PermissionUtils.hasFullDiskAccess()
     }
+    
+    func testFitMacErrorPermissionDenied() {
+        let error = FitMacError.permissionDenied(path: "/test/path")
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertTrue(error.errorDescription?.contains("Permission denied") ?? false)
+        XCTAssertNotNil(error.recoverySuggestion)
+    }
+    
+    func testFitMacErrorScanFailed() {
+        let error = FitMacError.scanFailed(reason: "Test reason")
+        XCTAssertEqual(error.errorDescription, "Scan failed: Test reason")
+    }
+    
+    func testFitMacErrorScanFailedWithUnderlying() {
+        let underlying = NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "underlying error"])
+        let error = FitMacError.scanFailed(reason: "Test", underlying: underlying)
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertTrue(error.errorDescription?.contains("underlying error") ?? false)
+    }
+    
+    func testFitMacErrorHomebrewNotInstalled() {
+        let error = FitMacError.homebrewNotInstalled
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertNotNil(error.recoverySuggestion)
+    }
+    
+    func testFitMacErrorAppRunning() {
+        let error = FitMacError.appRunning(appName: "TestApp")
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertTrue(error.errorDescription?.contains("TestApp") ?? false)
+    }
+    
+    func testFitMacErrorSystemItemProtected() {
+        let error = FitMacError.systemItemProtected(item: "SystemApp")
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertFalse(error.isRecoverable)
+    }
+    
+    func testFitMacErrorCleanupPartial() {
+        let error = FitMacError.cleanupPartial(freedSpace: 1024, failedCount: 2, errors: ["Error1", "Error2"])
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertTrue(error.errorDescription!.contains("Partial cleanup") || error.errorDescription!.contains("1 KB") || error.errorDescription!.contains("1024"))
+    }
+    
+    func testScanErrorDirectoryNotReadable() {
+        let error = ScanError.directoryNotReadable(path: "/test", reason: "No access")
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertTrue(error.errorDescription?.contains("No access") ?? false)
+    }
+    
+    func testScanErrorNoItemsFound() {
+        let error = ScanError.noItemsFound
+        XCTAssertEqual(error.errorDescription, "No items found")
+    }
+    
+    func testCleanErrorMoveToTrashFailed() {
+        let underlying = NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "test"])
+        let error = CleanError.moveToTrashFailed(path: "/test/file", underlying: underlying)
+        XCTAssertNotNil(error.errorDescription)
+        XCTAssertTrue(error.errorDescription?.contains("trash") ?? false)
+    }
+    
+    func testErrorIsCancellation() {
+        let fitMacCancelled = FitMacError.operationCancelled
+        XCTAssertTrue(fitMacCancelled.isCancellation)
+        
+        let scanCancelled = ScanError.cancelled
+        XCTAssertTrue(scanCancelled.isCancellation)
+        
+        let otherError = FitMacError.permissionDenied(path: "/test")
+        XCTAssertFalse(otherError.isCancellation)
+    }
+    
+    func testErrorContextEnrichedError() {
+        let context = ErrorContext(operation: "TestOp", path: URL(fileURLWithPath: "/test"), additionalInfo: ["key": "value"])
+        let original = NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "original error"])
+        let enriched = context.enrichedError(original)
+        
+        XCTAssertNotNil((enriched as? LocalizedError)?.errorDescription)
+        XCTAssertTrue((enriched as? LocalizedError)?.errorDescription?.contains("TestOp") ?? false)
+    }
+    
+    func testDuplicateFile() {
+        let file = DuplicateFile(
+            path: URL(fileURLWithPath: "/test/file.pdf"),
+            size: 1024,
+            hash: "abc123",
+            modifiedDate: Date(),
+            fileType: "pdf"
+        )
+        
+        XCTAssertEqual(file.size, 1024)
+        XCTAssertEqual(file.hash, "abc123")
+        XCTAssertEqual(file.fileType, "pdf")
+    }
+    
+    func testDuplicateGroup() {
+        let files = [
+            DuplicateFile(path: URL(fileURLWithPath: "/a"), size: 100, hash: "h1", modifiedDate: nil, fileType: "txt"),
+            DuplicateFile(path: URL(fileURLWithPath: "/b"), size: 100, hash: "h1", modifiedDate: nil, fileType: "txt"),
+            DuplicateFile(path: URL(fileURLWithPath: "/c"), size: 100, hash: "h1", modifiedDate: nil, fileType: "txt")
+        ]
+        
+        let group = DuplicateGroup(files: files, hash: "h1")
+        
+        XCTAssertEqual(group.files.count, 3)
+        XCTAssertEqual(group.fileSize, 100)
+        XCTAssertEqual(group.wastage, 200)
+        XCTAssertEqual(group.totalSize, 300)
+    }
+    
+    func testDuplicateGroupSingleFile() {
+        let files = [
+            DuplicateFile(path: URL(fileURLWithPath: "/a"), size: 100, hash: "h1", modifiedDate: nil, fileType: "txt")
+        ]
+        
+        let group = DuplicateGroup(files: files, hash: "h1")
+        
+        XCTAssertEqual(group.wastage, 0)
+        XCTAssertEqual(group.totalSize, 100)
+    }
 }

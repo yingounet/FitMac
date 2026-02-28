@@ -3,19 +3,12 @@ import FitMacCore
 import Combine
 
 @MainActor
-final class LargeFilesViewModel: ObservableObject {
-    @Published var files: [LargeFile] = []
-    @Published var isScanning = false
+final class LargeFilesViewModel: BaseScanViewModel<[LargeFile]> {
     @Published var selectedFiles: Set<URL> = []
     @Published var minSize: String = "100 MB"
     @Published var scanPath: URL = FileManager.default.homeDirectoryForCurrentUser
     @Published var sortBy: SortOption = .size
     @Published var maxResults = 50
-    @Published var errorMessage: String?
-    @Published var scannedCount: Int = 0
-    @Published var isCancelled = false
-    
-    private var scanTask: Task<Void, Never>?
     
     enum SortOption: String, CaseIterable {
         case size = "Size"
@@ -31,24 +24,13 @@ final class LargeFilesViewModel: ObservableObject {
             .reduce(0) { $0 + $1.size }
     }
     
-    func scan() {
-        cancelScan()
-        isCancelled = false
-        scanTask = Task { [weak self] in
-            await self?.performScan()
-        }
+    var files: [LargeFile] {
+        scanResult ?? []
     }
     
-    func cancelScan() {
-        scanTask?.cancel()
-        scanTask = nil
-        isScanning = false
-        isCancelled = true
-    }
-    
-    private func performScan() async {
+    override func performScan() async {
         isScanning = true
-        errorMessage = nil
+        clearError()
         selectedFiles = []
         scannedCount = 0
         
@@ -60,7 +42,7 @@ final class LargeFilesViewModel: ObservableObject {
             includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey, .typeIdentifierKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else {
-            errorMessage = "Unable to scan directory"
+            handleError(ScanError.directoryNotReadable(path: scanPath.path))
             isScanning = false
             return
         }
@@ -103,7 +85,7 @@ final class LargeFilesViewModel: ObservableObject {
             foundFiles.sort { ($0.modifiedDate ?? .distantPast) > ($1.modifiedDate ?? .distantPast) }
         }
         
-        files = Array(foundFiles.prefix(maxResults))
+        scanResult = Array(foundFiles.prefix(maxResults))
         isScanning = false
     }
     
@@ -115,9 +97,9 @@ final class LargeFilesViewModel: ObservableObject {
         for path in selectedFiles {
             do {
                 _ = try FileUtils.moveToTrash(at: path)
-                files.removeAll { $0.path == path }
+                scanResult?.removeAll { $0.path == path }
             } catch {
-                errorMessage = "Failed to delete \(path.lastPathComponent): \(error.localizedDescription)"
+                handleError(CleanError.moveToTrashFailed(path: path.path, underlying: error))
                 success = false
             }
         }
@@ -134,5 +116,13 @@ final class LargeFilesViewModel: ObservableObject {
         
         selectedFiles = []
         return success
+    }
+    
+    func selectAll() {
+        selectedFiles = Set(files.map(\.path))
+    }
+    
+    func deselectAll() {
+        selectedFiles = []
     }
 }

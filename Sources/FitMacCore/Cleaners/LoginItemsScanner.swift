@@ -235,11 +235,147 @@ public actor LoginItemsScanner {
     
     private func scanSharedFileListItems() -> [LoginItem] {
         var items: [LoginItem] = []
+        let fileManager = FileManager.default
         
-        let sflPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.apple.loginitems.sfl")
+        let sflPaths = [
+            fileManager.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments/com.apple.loginitems.sfl"),
+            fileManager.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support/com.apple.backgroundtaskmanagementagent/com.apple.loginitems.plist")
+        ]
         
-        guard FileManager.default.fileExists(atPath: sflPath.path) else { return items }
+        for sflPath in sflPaths {
+            guard fileManager.fileExists(atPath: sflPath.path) else { continue }
+            
+            let parsedItems = parseSharedFileList(at: sflPath)
+            items.append(contentsOf: parsedItems)
+        }
+        
+        items.append(contentsOf: scanBackgroundTaskManagementItems())
+        
+        return items
+    }
+    
+    private func parseSharedFileList(at url: URL) -> [LoginItem] {
+        var items: [LoginItem] = []
+        
+        guard let data = try? Data(contentsOf: url) else { return items }
+        
+        var format: PropertyListSerialization.PropertyListFormat = .binary
+        guard let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: &format) as? [String: Any] else {
+            return items
+        }
+        
+        if let itemsArray = plist["items"] as? [[String: Any]] {
+            for itemDict in itemsArray {
+                if let loginItem = parseSFLItem(itemDict) {
+                    items.append(loginItem)
+                }
+            }
+        }
+        
+        if let itemsArray = plist["Items"] as? [[String: Any]] {
+            for itemDict in itemsArray {
+                if let loginItem = parseSFLItem(itemDict) {
+                    items.append(loginItem)
+                }
+            }
+        }
+        
+        return items
+    }
+    
+    private func parseSFLItem(_ itemDict: [String: Any]) -> LoginItem? {
+        var itemURL: URL?
+        var name: String?
+        
+        if let urlString = itemDict["URL"] as? String,
+           let url = URL(string: urlString) {
+            itemURL = url
+            name = url.deletingPathExtension().lastPathComponent
+        } else if let urlData = itemDict["URL"] as? Data {
+            if let url = URL(dataRepresentation: urlData, relativeTo: nil) {
+                itemURL = url
+                name = url.deletingPathExtension().lastPathComponent
+            }
+        }
+        
+        if let bookmarkData = itemDict["Bookmark"] as? Data {
+            var isStale = false
+            if let url = try? URL(resolvingBookmarkData: bookmarkData, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale) {
+                itemURL = url
+                name = url.deletingPathExtension().lastPathComponent
+            }
+        }
+        
+        if let itemName = itemDict["Name"] as? String {
+            name = itemName
+        }
+        
+        guard let url = itemURL, let itemName = name else { return nil }
+        
+        let isEnabled = !(itemDict["Disabled"] as? Bool ?? false)
+        let visibility = itemDict["Visibility"] as? Int ?? 0
+        
+        return LoginItem(
+            name: itemName,
+            label: itemName,
+            path: url,
+            programPath: url.path,
+            arguments: [],
+            runAtLoad: true,
+            isEnabled: isEnabled && visibility != 1,
+            itemType: .loginItem,
+            isSystemItem: false
+        )
+    }
+    
+    private func scanBackgroundTaskManagementItems() -> [LoginItem] {
+        var items: [LoginItem] = []
+        let fileManager = FileManager.default
+        
+        let btmPath = fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/com.apple.backgroundtaskmanagementagent/Downloads.plist")
+        
+        guard fileManager.fileExists(atPath: btmPath.path),
+              let data = try? Data(contentsOf: btmPath),
+              let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
+              let itemsArray = plist["items"] as? [[String: Any]] else {
+            return items
+        }
+        
+        for itemDict in itemsArray {
+            guard let name = itemDict["Name"] as? String else { continue }
+            
+            var itemURL: URL?
+            if let url = itemDict["URL"] as? URL {
+                itemURL = url
+            } else if let urlString = itemDict["URLString"] as? String,
+                      let url = URL(string: urlString) {
+                itemURL = url
+            } else if let bookmarkData = itemDict["Bookmark"] as? Data {
+                var isStale = false
+                if let url = try? URL(resolvingBookmarkData: bookmarkData, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale) {
+                    itemURL = url
+                }
+            }
+            
+            guard let url = itemURL else { continue }
+            
+            let isEnabled = !(itemDict["Disabled"] as? Bool ?? false)
+            
+            items.append(LoginItem(
+                name: name,
+                label: name,
+                path: url,
+                programPath: url.path,
+                arguments: [],
+                runAtLoad: true,
+                isEnabled: isEnabled,
+                itemType: .loginItem,
+                isSystemItem: false
+            ))
+        }
         
         return items
     }

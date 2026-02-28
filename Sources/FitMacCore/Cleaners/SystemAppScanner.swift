@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 public struct SystemApp: Identifiable, Codable, Hashable {
     public let id: String
@@ -159,6 +160,14 @@ public actor SystemAppScanner {
         var failedItems: [FailedItem] = []
         var freedSpace: Int64 = 0
         
+        guard app.warningLevel != .warning else {
+            throw FitMacError.systemItemProtected(item: app.name)
+        }
+        
+        if await isAppRunning(bundleIdentifier: app.bundleIdentifier) {
+            throw FitMacError.appRunning(appName: app.name)
+        }
+        
         if dryRun {
             let cleanupItem = CleanupItem(
                 path: app.path,
@@ -181,13 +190,10 @@ public actor SystemAppScanner {
                 deletedItems.append(cleanupItem)
                 freedSpace += app.size
                 
-                let pkgId = app.bundleIdentifier
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/sbin/pkgutil")
-                process.arguments = ["--forget", pkgId]
-                try process.run()
-                process.waitUntilExit()
+                try await forgetPackageReceipt(bundleId: app.bundleIdentifier)
                 
+            } catch let error as FitMacError {
+                throw error
             } catch {
                 let cleanupItem = CleanupItem(
                     path: app.path,
@@ -204,5 +210,53 @@ public actor SystemAppScanner {
             failedItems: failedItems,
             freedSpace: freedSpace
         )
+    }
+    
+    private func isAppRunning(bundleIdentifier: String) async -> Bool {
+        let runningApps = NSWorkspace.shared.runningApplications
+        return runningApps.contains { $0.bundleIdentifier == bundleIdentifier }
+    }
+    
+    private func forgetPackageReceipt(bundleId: String) async throws {
+        let protectedPrefixes = [
+            "com.apple.",
+            "com.microsoft.",
+            "com.google.",
+            "org.mozilla."
+        ]
+        
+        for prefix in protectedPrefixes {
+            if bundleId.hasPrefix(prefix) {
+                return
+            }
+        }
+        
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/pkgutil")
+        process.arguments = ["--pkg-info", bundleId]
+        
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            
+            guard process.terminationStatus == 0 else {
+                return
+            }
+            
+            let forgetProcess = Process()
+            forgetProcess.executableURL = URL(fileURLWithPath: "/usr/sbin/pkgutil")
+            forgetProcess.arguments = ["--forget", bundleId, "--volume", "/"]
+            forgetProcess.standardOutput = FileHandle.nullDevice
+            forgetProcess.standardError = FileHandle.nullDevice
+            
+            try forgetProcess.run()
+            forgetProcess.waitUntilExit()
+        } catch {
+            return
+        }
     }
 }
