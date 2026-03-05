@@ -63,9 +63,6 @@ struct LoginItemsView: View {
                 Text("This will disable and remove '\(item.name)' from your login items. The plist file will be moved to trash.")
             }
         }
-        .onAppear {
-            viewModel.scan()
-        }
     }
     
     private var toolbarSection: some View {

@@ -53,9 +53,6 @@ struct MailAttachmentsView: View {
         } message: {
             Text("This will remove \(viewModel.selectedItems.count) attachment(s), freeing \(SizeFormatter.format(viewModel.totalSelectedSize)). Original emails will remain, but attachments won't be accessible.")
         }
-        .onAppear {
-            viewModel.scan()
-        }
     }
     
     private var toolbarSection: some View {

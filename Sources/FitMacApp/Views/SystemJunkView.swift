@@ -53,9 +53,6 @@ struct SystemJunkView: View {
         } message: {
             Text("This will clean \(viewModel.selectedItems.count) item(s), freeing \(SizeFormatter.format(viewModel.totalSelectedSize)).")
         }
-        .onAppear {
-            viewModel.scan()
-        }
     }
     
     private var toolbarSection: some View {

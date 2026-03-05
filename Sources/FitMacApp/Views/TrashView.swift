@@ -53,9 +53,6 @@ struct TrashView: View {
         } message: {
             Text("This will permanently delete \(viewModel.selectedBins.count) trash bin(s), freeing \(SizeFormatter.format(viewModel.totalSelectedSize)). This action cannot be undone.")
         }
-        .onAppear {
-            viewModel.scan()
-        }
     }
     
     private var toolbarSection: some View {

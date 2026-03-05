@@ -19,9 +19,6 @@ struct SystemAppView: View {
             }
         }
         .navigationTitle("System Apps")
-        .onAppear {
-            viewModel.scan()
-        }
         .alert("Remove System App?", isPresented: $viewModel.showRemoveConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Remove", role: .destructive) {

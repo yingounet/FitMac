@@ -53,9 +53,6 @@ struct LanguageFilesView: View {
         } message: {
             Text("This will remove \(viewModel.selectedItems.count) language file(s), freeing \(SizeFormatter.format(viewModel.totalSelectedSize)). Your current language will be preserved.")
         }
-        .onAppear {
-            viewModel.scan()
-        }
     }
     
     private var toolbarSection: some View {

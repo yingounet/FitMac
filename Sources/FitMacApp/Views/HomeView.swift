@@ -3,6 +3,7 @@ import FitMacCore
 
 struct HomeView: View {
     @StateObject private var viewModel = DiskStatusViewModel()
+    @StateObject private var scanManager = ScanManager.shared
     @State private var hasFullDiskAccess = true
     @Binding var selectedSidebarItem: SidebarItem?
     
@@ -13,6 +14,7 @@ struct HomeView: View {
                     permissionWarningBanner
                 }
                 headerSection
+                scanAllSection
                 diskStatusSection
                 quickActionsSection
             }
@@ -71,6 +73,84 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
+    }
+    
+    private var scanAllSection: some View {
+        GroupBox("Scan All") {
+            VStack(spacing: 16) {
+                if scanManager.isScanningAll {
+                    scanningProgressView
+                } else if case .completed = scanManager.scanProgress {
+                    scanCompletedView
+                } else {
+                    scanIdleView
+                }
+            }
+            .padding()
+        }
+    }
+    
+    private var scanningProgressView: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .scaleEffect(1.5)
+            
+            if case let .scanning(current, completed, total) = scanManager.scanProgress {
+                Text("Scanning \(current.rawValue)...")
+                    .font(.headline)
+                Text("\(completed) of \(total) categories")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Button("Cancel") {
+                scanManager.cancelAll()
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+    
+    private var scanCompletedView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.green)
+            
+            Text("Scan Complete")
+                .font(.headline)
+            
+            if scanManager.totalScannableSize > 0 {
+                Text("Found \(SizeFormatter.format(scanManager.totalScannableSize)) of cleanable space")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Your Mac is clean!")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Button("Scan Again") {
+                scanManager.scanAll()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+    
+    private var scanIdleView: some View {
+        VStack(spacing: 12) {
+            Text("Scan your Mac for cleanable items")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            
+            Button {
+                scanManager.scanAll()
+            } label: {
+                Label("Scan All", systemImage: "arrow.clockwise")
+                    .font(.headline)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+        }
     }
     
     private var diskStatusSection: some View {

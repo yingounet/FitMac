@@ -85,9 +85,6 @@ struct HomebrewView: View {
         } message: {
             Text("This will run 'brew cleanup --prune=all' to remove old versions and clear the cache.")
         }
-        .onAppear {
-            viewModel.scan()
-        }
     }
     
     private var toolbarSection: some View {

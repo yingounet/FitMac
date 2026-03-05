@@ -53,9 +53,6 @@ struct iTunesView: View {
         } message: {
             Text("This will clean \(viewModel.selectedItems.count) item(s), freeing \(SizeFormatter.format(viewModel.totalSelectedSize)). Make sure you have backups of important data.")
         }
-        .onAppear {
-            viewModel.scan()
-        }
     }
     
     private var toolbarSection: some View {
