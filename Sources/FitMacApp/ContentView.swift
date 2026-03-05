@@ -14,11 +14,12 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case loginItems = "Login Items"
     case duplicates = "Duplicates"
     case largeFiles = "Large Files"
-    case uninstall = "Uninstall"
+    case appCleaner = "App Cleaner"
     case history = "History"
     case permissions = "Permissions"
     
     var id: String { rawValue }
+    var title: String { rawValue }
     
     var icon: String {
         switch self {
@@ -34,13 +35,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .loginItems: return "list.bullet.rectangle"
         case .duplicates: return "doc.on.doc.fill"
         case .largeFiles: return "doc.fill"
-        case .uninstall: return "xmark.bin.fill"
+        case .appCleaner: return "app.badge.fill"
         case .history: return "clock.arrow.circlepath"
         case .permissions: return "lock.shield.fill"
         }
     }
-    
-    var title: String { rawValue }
 }
 
 struct ContentView: View {
@@ -80,15 +79,14 @@ struct ContentView: View {
                 DuplicatesView()
             case .largeFiles:
                 LargeFilesView()
-            case .uninstall:
-                UninstallView()
+            case .appCleaner:
+                AppCleanerView()
             case .history:
                 LogView()
             case .permissions:
                 FullDiskAccessView()
             case .none:
-                Text("Select a feature")
-                    .foregroundStyle(.secondary)
+                HomeView(selectedSidebarItem: $selectedSidebarItem)
             }
         }
     }

@@ -205,11 +205,11 @@ struct HomeView: View {
                 }
                 QuickActionCard(
                     icon: "xmark.bin.fill",
-                    title: "Uninstall Apps",
-                    description: "Remove apps with all leftovers",
+                    title: "App Cleaner",
+                    description: "Remove app leftovers and data",
                     color: .blue
                 ) {
-                    selectedSidebarItem = .uninstall
+                    selectedSidebarItem = .appCleaner
                 }
                 QuickActionCard(
                     icon: "clock.arrow.circlepath",
