@@ -11,10 +11,31 @@ final class LanguageFilesViewModel: ObservableObject {
     @Published var cleanupResult: CleanupResult?
     @Published var errorMessage: String?
     @Published var scannedCount: Int = 0
+    @Published var sortOption: SortOption = .sizeDescending
     
     private let scanner = LanguageScanner()
     private let cleaner = LanguageCleaner()
     private var scanTask: Task<Void, Never>?
+    
+    enum SortOption: String, CaseIterable {
+        case sizeDescending = "Size (Large to Small)"
+        case sizeAscending = "Size (Small to Large)"
+        case nameAscending = "Name (A-Z)"
+        case nameDescending = "Name (Z-A)"
+    }
+    
+    struct AppGroup: Identifiable, Hashable {
+        let id: String
+        let appName: String
+        let items: [LanguageFile]
+        let totalSize: Int64
+        let selectedCount: Int
+        let selectedSize: Int64
+        
+        var allSelected: Bool {
+            selectedCount == items.count
+        }
+    }
     
     var totalSelectedSize: Int64 {
         guard let result = scanResult else { return 0 }
@@ -25,6 +46,40 @@ final class LanguageFilesViewModel: ObservableObject {
     
     var removableItems: [LanguageFile] {
         scanResult?.removableItems ?? []
+    }
+    
+    var appGroups: [AppGroup] {
+        guard let result = scanResult else { return [] }
+        let items = result.removableItems
+        
+        let grouped = Dictionary(grouping: items, by: { $0.appName })
+        
+        let groups = grouped.map { appName, items in
+            let selectedItemsForApp = items.filter { selectedItems.contains($0.id) }
+            return AppGroup(
+                id: appName,
+                appName: appName,
+                items: items,
+                totalSize: items.reduce(0) { $0 + $1.size },
+                selectedCount: selectedItemsForApp.count,
+                selectedSize: selectedItemsForApp.reduce(0) { $0 + $1.size }
+            )
+        }
+        
+        return sortGroups(groups)
+    }
+    
+    private func sortGroups(_ groups: [AppGroup]) -> [AppGroup] {
+        switch sortOption {
+        case .sizeDescending:
+            return groups.sorted { $0.totalSize > $1.totalSize }
+        case .sizeAscending:
+            return groups.sorted { $0.totalSize < $1.totalSize }
+        case .nameAscending:
+            return groups.sorted { $0.appName.localizedCaseInsensitiveCompare($1.appName) == .orderedAscending }
+        case .nameDescending:
+            return groups.sorted { $0.appName.localizedCaseInsensitiveCompare($1.appName) == .orderedDescending }
+        }
     }
     
     func scan() {
@@ -95,5 +150,29 @@ final class LanguageFilesViewModel: ObservableObject {
     
     func deselectAll() {
         selectedItems = []
+    }
+    
+    func selectApp(_ appName: String) {
+        guard let result = scanResult else { return }
+        let appItems = result.removableItems.filter { $0.appName == appName }
+        for item in appItems {
+            selectedItems.insert(item.id)
+        }
+    }
+    
+    func deselectApp(_ appName: String) {
+        guard let result = scanResult else { return }
+        let appItems = result.removableItems.filter { $0.appName == appName }
+        for item in appItems {
+            selectedItems.remove(item.id)
+        }
+    }
+    
+    func toggleApp(_ appName: String, selected: Bool) {
+        if selected {
+            selectApp(appName)
+        } else {
+            deselectApp(appName)
+        }
     }
 }

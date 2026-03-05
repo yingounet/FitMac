@@ -70,6 +70,14 @@ struct LanguageFilesView: View {
             Spacer()
             
             if viewModel.scanResult != nil {
+                Picker("Sort by", selection: $viewModel.sortOption) {
+                    ForEach(LanguageFilesViewModel.SortOption.allCases, id: \.self) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 160)
+                
                 Button("Select All") {
                     viewModel.selectAll()
                 }
@@ -140,9 +148,9 @@ struct LanguageFilesView: View {
     private func languageFilesList(_ result: LanguageScanResult) -> some View {
         GroupBox("Removable Language Files") {
             List {
-                ForEach(groupedByApp(items: result.removableItems), id: \.self) { app in
-                    Section(header: Text(app)) {
-                        ForEach(result.removableItems.filter { $0.appName == app }) { item in
+                ForEach(viewModel.appGroups) { group in
+                    Section {
+                        ForEach(group.items) { item in
                             LanguageFileRow(
                                 item: item,
                                 isSelected: viewModel.selectedItems.contains(item.id)
@@ -154,11 +162,40 @@ struct LanguageFilesView: View {
                                 }
                             }
                         }
+                    } header: {
+                        appGroupHeader(group)
                     }
                 }
             }
             .listStyle(.plain)
             .frame(minHeight: 300)
+        }
+    }
+    
+    private func appGroupHeader(_ group: LanguageFilesViewModel.AppGroup) -> some View {
+        HStack {
+            Button {
+                viewModel.toggleApp(group.appName, selected: !group.allSelected)
+            } label: {
+                Image(systemName: group.allSelected ? "checkmark.rectangle.fill" : "rectangle")
+                    .foregroundStyle(group.allSelected ? .blue : .gray)
+            }
+            .buttonStyle(.plain)
+            
+            Text(group.appName)
+                .fontWeight(.semibold)
+            
+            Spacer()
+            
+            Text(SizeFormatter.format(group.totalSize))
+                .fontWeight(.medium)
+                .foregroundStyle(.orange)
+            
+            if group.selectedCount > 0 {
+                Text("(\(group.selectedCount) selected)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
     
@@ -177,11 +214,6 @@ struct LanguageFilesView: View {
     
     private func errorView(_ error: String) -> some View {
         ErrorStateView(message: error)
-    }
-    
-    private func groupedByApp(items: [LanguageFile]) -> [String] {
-        let apps = Set(items.map(\.appName))
-        return apps.sorted()
     }
 }
 
