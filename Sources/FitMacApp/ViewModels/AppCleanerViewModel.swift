@@ -198,17 +198,21 @@ final class AppCleanerViewModel: ObservableObject {
         for leftover in itemsToClean {
             for path in leftover.paths {
                 do {
+                    let size = try FileUtils.sizeOfItem(at: path)
+                    let isDirectory = try FileUtils.isDirectory(at: path)
+                    
                     if !dryRun {
                         _ = try FileUtils.moveToTrash(at: path)
                     }
+                    
                     let item = CleanupItem(
                         path: path,
                         category: .appCache,
-                        size: try FileUtils.sizeOfItem(at: path),
-                        isDirectory: try FileUtils.isDirectory(at: path)
+                        size: size,
+                        isDirectory: isDirectory
                     )
                     deletedItems.append(item)
-                    totalFreed += item.size
+                    totalFreed += size
                 } catch {
                     let item = CleanupItem(
                         path: path,

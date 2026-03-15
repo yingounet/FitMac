@@ -261,14 +261,9 @@ struct AppLeftoverRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            Button {
-                onToggle()
-            } label: {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? .blue : .gray)
-                    .font(.title3)
-            }
-            .buttonStyle(.plain)
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isSelected ? .blue : .gray)
+                .font(.title3)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
