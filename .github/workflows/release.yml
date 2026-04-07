@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '5.9'
+      
+      - name: Build App
+        run: |
+          swift build -c release --product FitMacApp
+      
+      - name: Create App Bundle
+        run: |
+          mkdir -p FitMac.app/Contents/MacOS
+          mkdir -p FitMac.app/Contents/Resources
+          cp .build/release/FitMacApp FitMac.app/Contents/MacOS/FitMac
+          
+          # Create Info.plist
+          cat > FitMac.app/Contents/Info.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleExecutable</key>
+              <string>FitMac</string>
+              <key>CFBundleIconFile</key>
+              <string>AppIcon</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.fitmac.app</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>FitMac</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${{ github.ref_name }}</string>
+              <key>CFBundleVersion</key>
+              <string>${{ github.run_number }}</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>13.0</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>NSPrincipalClass</key>
+              <string>NSApplication</string>
+          </dict>
+          </plist>
+          EOF
+          
+          # Copy app icon if exists
+          if [ -d "Sources/FitMacApp/Resources/Assets.xcassets/AppIcon.appiconset" ]; then
+            cp Sources/FitMacApp/Resources/Assets.xcassets/AppIcon.appiconset/*.png FitMac.app/Contents/Resources/ 2>/dev/null || true
+          fi
+      
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --volname "FitMac" \
+            --volicon "Sources/FitMacApp/Resources/Assets.xcassets/AppIcon.appiconset/512.png" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 100 \
+            --icon "FitMac.app" 180 170 \
+            --hide-extension "FitMac.app" \
+            --app-drop-link 480 170 \
+            "FitMac-${{ github.ref_name }}.dmg" \
+            "FitMac.app"
+      
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: FitMac-${{ github.ref_name }}.dmg
+          generate_release_notes: true
